@@ -293,7 +293,7 @@ const RegisterForm = () => {
             </Title>
           </div>
           <div className='text-center mb-4'>
-            <Text type='tertiary'>{t('魔芯科技（KOKONI3D）')}</Text>
+            <Text type='tertiary'>{t('魔芯科技（Magicore Technology）')}</Text>
           </div>
 
           <Card className='mx-auth-card border-0 !rounded-2xl overflow-hidden'>
@@ -420,7 +420,7 @@ const RegisterForm = () => {
             </Title>
           </div>
           <div className='text-center mb-4'>
-            <Text type='tertiary'>{t('魔芯科技（KOKONI3D）')}</Text>
+            <Text type='tertiary'>{t('魔芯科技（Magicore Technology）')}</Text>
           </div>
 
           <Card className='mx-auth-card border-0 !rounded-2xl overflow-hidden'>

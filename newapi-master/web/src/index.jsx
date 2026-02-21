@@ -20,7 +20,7 @@ import en_GB from '@douyinfe/semi-ui/lib/es/locale/source/en_GB';
 // Welcome message (Do not remove this without permission from the original developer)
 if (typeof window !== 'undefined') {
   console.log(
-    '%cMochip Open Platform%c KOKONI3D: https://www.kokoni3d.com',
+    '%cMagicore Open Platform%c KOKONI3D: https://www.kokoni3d.com',
     'color: #003e7e; font-weight: bold; font-size: 24px;',
     'color: inherit; font-size: 14px;',
   );

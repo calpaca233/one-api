@@ -33,7 +33,7 @@ const Home = () => {
   const heroContent = useMemo(
     () => ({
       badge: 'KOKONI3D',
-      title: isChinese ? '魔芯开放平台' : 'Mochip Open Platform',
+      title: isChinese ? '魔芯开放平台' : 'Magicore Open Platform',
       subtitle: isChinese
         ? '企业级模型开放接口服务'
         : 'Enterprise AI API Gateway',

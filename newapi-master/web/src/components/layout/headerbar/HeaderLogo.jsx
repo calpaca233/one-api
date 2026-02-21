@@ -55,7 +55,7 @@ const HeaderLogo = ({
             </Typography.Title>
           </SkeletonWrapper>
           <Typography.Text className='!text-xs !text-semi-color-text-2 truncate'>
-            {t('魔芯科技（KOKONI3D）')}
+            {t('魔芯科技（Magicore Technology）')}
           </Typography.Text>
           {(isSelfUseMode || isDemoSiteMode) && !isLoading && (
             <div className='mt-1'>

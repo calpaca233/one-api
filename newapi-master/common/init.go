@@ -19,7 +19,7 @@ var (
 )
 
 func printHelp() {
-	fmt.Println("Mochip Open Platform " + Version + " - Unified API gateway service.")
+	fmt.Println("Magicore Open Platform " + Version + " - Unified API gateway service.")
 	fmt.Println("Copyright (C) KOKONI3D. All rights reserved.")
 	fmt.Println("Website: https://www.kokoni3d.com")
 	fmt.Println("Usage: one-api [--port <port>] [--log-dir <log directory>] [--version] [--help]")

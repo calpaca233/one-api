@@ -50,7 +50,7 @@ const FooterBar = () => {
               </Typography.Title>
               <Typography.Text className='!text-semi-color-text-1'>
                 {t(
-                  '由魔芯科技（KOKONI3D）打造的开放能力平台，提供稳定、高可用、可扩展的模型接入体验。',
+                  '由魔芯科技（Magicore Technology）打造的开放能力平台，提供稳定、高可用、可扩展的模型接入体验。',
                 )}
               </Typography.Text>
             </div>
@@ -140,7 +140,7 @@ const FooterBar = () => {
 
           <div className='mt-10 border-t border-semi-color-border pt-6 flex flex-col items-center gap-2 text-sm text-semi-color-text-2'>
             <span>
-              © {currentYear} {t('魔芯科技（KOKONI3D）')} ·{' '}
+              © {currentYear} {t('魔芯科技（Magicore Technology）')} ·{' '}
               {t('保留所有权利')}
             </span>
             {icpNumber && (
