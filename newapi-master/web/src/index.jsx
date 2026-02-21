@@ -21,7 +21,7 @@ import en_GB from '@douyinfe/semi-ui/lib/es/locale/source/en_GB';
 if (typeof window !== 'undefined') {
   console.log(
     '%cMochip Open Platform%c KOKONI3D: https://www.kokoni3d.com',
-    'color: #2f63ff; font-weight: bold; font-size: 24px;',
+    'color: #003e7e; font-weight: bold; font-size: 24px;',
     'color: inherit; font-size: 14px;',
   );
 }

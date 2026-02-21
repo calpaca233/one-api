@@ -379,7 +379,7 @@ const LoginForm = () => {
                 <Button
                   theme='solid'
                   type='primary'
-                  className='w-full h-12 flex items-center justify-center !bg-[#2f63ff] !text-white !rounded-full hover:!bg-[#2554e4] transition-colors'
+                  className='w-full h-12 flex items-center justify-center !bg-[#003e7e] !text-white !rounded-full hover:!bg-[#2483c6] transition-colors'
                   icon={<IconMail size='large' />}
                   onClick={handleEmailLoginClick}
                   loading={emailLoginLoading}

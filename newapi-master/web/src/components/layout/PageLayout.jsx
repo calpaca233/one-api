@@ -225,7 +225,7 @@ const PageLayout = () => {
               padding: '20px',
               textAlign: 'center',
               background:
-                'radial-gradient(circle at 20% 20%, #dbeafe 0%, transparent 45%), radial-gradient(circle at 80% 15%, #e0e7ff 0%, transparent 42%), linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%)',
+                'radial-gradient(circle at 20% 20%, rgba(36, 131, 198, 0.2) 0%, transparent 45%), radial-gradient(circle at 80% 15%, rgba(205, 220, 241, 0.85) 0%, transparent 42%), linear-gradient(180deg, #f8fbff 0%, #cddcf1 100%)',
             }}
           >
             <div
@@ -234,8 +234,8 @@ const PageLayout = () => {
                 backdropFilter: 'blur(12px)',
                 borderRadius: '16px',
                 padding: '30px 20px',
-                border: '1px solid rgba(47, 99, 255, 0.12)',
-                boxShadow: '0 12px 30px rgba(47, 99, 255, 0.12)',
+                border: '1px solid rgba(139, 158, 183, 0.35)',
+                boxShadow: '0 12px 30px rgba(0, 62, 126, 0.14)',
                 width: '90%',
                 maxWidth: '420px',
               }}
@@ -246,7 +246,7 @@ const PageLayout = () => {
                   width: '60px',
                   height: '60px',
                   margin: '0 auto 20px',
-                  color: '#2f63ff',
+                  color: '#003e7e',
                 }}
               >
                 <path
@@ -258,12 +258,12 @@ const PageLayout = () => {
                 fontSize: '24px',
                 fontWeight: 'bold',
                 marginBottom: '16px',
-                color: '#1f2b3d',
+                color: '#003e7e',
               }}>{t('请使用电脑访问')}</h1>
               <p style={{
                 fontSize: '16px',
                 lineHeight: '1.5',
-                color: '#5e6b83',
+                color: '#8b9eb7',
                 marginBottom: '0',
               }}>{t('当前页面需要在更大的屏幕上查看，请使用电脑或平板电脑横屏模式访问以获得最佳体验。')}</p>
             </div>
