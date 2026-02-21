@@ -396,7 +396,7 @@ const OtherSetting = () => {
                 fullMode={false}
                 type='info'
                 description={t(
-                  '移除 One API 的版权标识必须首先获得授权，项目维护需要花费大量精力，如果本项目对你有意义，请主动支持本项目',
+                  '请保留魔芯开放平台相关品牌标识。平台持续维护需要投入大量资源，感谢你的支持。',
                 )}
                 closeIcon={null}
                 style={{ marginTop: 15 }}
