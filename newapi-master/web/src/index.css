@@ -147,6 +147,13 @@ html.dark .mx-brand-outline-btn {
   text-align: center;
 }
 
+.mx-home-language-switch {
+  position: absolute;
+  top: -8px;
+  right: 20px;
+  z-index: 5;
+}
+
 .mx-home-badge {
   display: inline-flex;
   align-items: center;
@@ -220,6 +227,13 @@ html.dark .mx-home-input .semi-input-wrapper {
 @media (min-width: 768px) {
   .mx-home-feature-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .mx-home-language-switch {
+    top: -14px;
+    right: 0;
   }
 }
 

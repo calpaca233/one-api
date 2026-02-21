@@ -232,6 +232,43 @@ func SendEmailVerification(c *gin.Context) {
 	return
 }
 
+func SendLoginVerification(c *gin.Context) {
+	account := strings.TrimSpace(c.Query("account"))
+	if account == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "无效的参数",
+		})
+		return
+	}
+
+	var user model.User
+	if err := model.DB.Select("email").Where("username = ? OR email = ?", account, account).First(&user).Error; err != nil || user.Email == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "用户不存在或未绑定邮箱",
+		})
+		return
+	}
+
+	code := common.GenerateVerificationCode(6)
+	common.RegisterVerificationCodeWithKey(user.Email, code, common.LoginVerificationPurpose)
+
+	subject := fmt.Sprintf("%s登录验证邮件", common.SystemName)
+	content := fmt.Sprintf("<p>您好，你正在进行%s登录验证。</p>"+
+		"<p>您的验证码为: <strong>%s</strong></p>"+
+		"<p>验证码 %d 分钟内有效，如果不是本人操作，请忽略。</p>", common.SystemName, code, common.VerificationValidMinutes)
+	if err := common.SendEmail(subject, user.Email, content); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
 func SendPasswordResetEmail(c *gin.Context) {
 	email := c.Query("email")
 	if err := common.Validate.Var(email, "required,email"); err != nil {

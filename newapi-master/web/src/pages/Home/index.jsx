@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { IconCopy, IconFile, IconPlay } from '@douyinfe/semi-icons';
 import { Link } from 'react-router-dom';
 import NoticeModal from '../../components/layout/NoticeModal';
+import LanguageSelector from '../../components/layout/headerbar/LanguageSelector';
 
 const Home = () => {
   const { t, i18n } = useTranslation();
@@ -27,6 +28,7 @@ const Home = () => {
   const endpointItems = API_ENDPOINTS.map((e) => ({ value: e }));
   const [endpointIndex, setEndpointIndex] = useState(0);
   const isChinese = i18n.language.startsWith('zh');
+  const currentLang = i18n.language === 'en' ? 'en' : 'zh';
 
   const heroContent = useMemo(
     () => ({
@@ -80,6 +82,10 @@ const Home = () => {
     }
   };
 
+  const handleLanguageChange = (lang) => {
+    i18n.changeLanguage(lang);
+  };
+
   useEffect(() => {
     const checkNoticeAndShow = async () => {
       const lastCloseDate = localStorage.getItem('notice_close_date');
@@ -121,6 +127,13 @@ const Home = () => {
       {homePageContentLoaded && homePageContent === '' ? (
         <div className='mx-home-hero w-full overflow-x-hidden'>
           <div className='mx-home-hero-inner'>
+            <div className='mx-home-language-switch'>
+              <LanguageSelector
+                currentLang={currentLang}
+                onLanguageChange={handleLanguageChange}
+                t={t}
+              />
+            </div>
             <div className='mx-home-badge'>{heroContent.badge}</div>
             <h1 className='mx-home-title'>{heroContent.title}</h1>
             <p className='mx-home-subtitle'>{heroContent.subtitle}</p>

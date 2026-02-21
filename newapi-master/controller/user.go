@@ -21,8 +21,9 @@ import (
 )
 
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username         string `json:"username"`
+	Password         string `json:"password"`
+	VerificationCode string `json:"verification_code"`
 }
 
 func Login(c *gin.Context) {
@@ -44,6 +45,7 @@ func Login(c *gin.Context) {
 	}
 	username := loginRequest.Username
 	password := loginRequest.Password
+	verificationCode := strings.TrimSpace(loginRequest.VerificationCode)
 	if username == "" || password == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "无效的参数",
@@ -62,6 +64,31 @@ func Login(c *gin.Context) {
 			"success": false,
 		})
 		return
+	}
+
+	if common.EmailVerificationEnabled {
+		if user.Email == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "该账号未绑定邮箱，请先在个人设置中绑定邮箱",
+				"success": false,
+			})
+			return
+		}
+		if verificationCode == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "管理员开启了登录邮箱验证，请输入邮箱验证码",
+				"success": false,
+			})
+			return
+		}
+		if !common.VerifyCodeWithKey(user.Email, verificationCode, common.LoginVerificationPurpose) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "验证码错误或已过期",
+				"success": false,
+			})
+			return
+		}
+		common.DeleteKey(user.Email, common.LoginVerificationPurpose)
 	}
 
 	// 检查是否启用 2FA

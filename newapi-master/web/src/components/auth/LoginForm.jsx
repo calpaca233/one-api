@@ -36,6 +36,7 @@ const LoginForm = () => {
     username: '',
     password: '',
     wechat_verification_code: '',
+    login_verification_code: '',
   });
   const { username, password } = inputs;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,6 +53,7 @@ const LoginForm = () => {
   const [linuxdoLoading, setLinuxdoLoading] = useState(false);
   const [emailLoginLoading, setEmailLoginLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginVerifyCodeLoading, setLoginVerifyCodeLoading] = useState(false);
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   const [otherLoginOptionsLoading, setOtherLoginOptionsLoading] =
     useState(false);
@@ -133,11 +135,16 @@ const LoginForm = () => {
     setLoginLoading(true);
     try {
       if (username && password) {
+        if (status.email_verification && !inputs.login_verification_code) {
+          showInfo('请输入邮箱验证码');
+          return;
+        }
         const res = await API.post(
           `/api/user/login?turnstile=${turnstileToken}`,
           {
             username,
             password,
+            verification_code: inputs.login_verification_code || '',
           },
         );
         const { success, message, data } = res.data;
@@ -257,6 +264,33 @@ const LoginForm = () => {
     setResetPasswordLoading(false);
   };
 
+  const handleSendLoginVerificationCode = async () => {
+    if (!username) {
+      showInfo(t('请输入您的用户名或邮箱地址'));
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
+      return;
+    }
+    setLoginVerifyCodeLoading(true);
+    try {
+      const res = await API.get(
+        `/api/verification/login?account=${encodeURIComponent(username)}&turnstile=${turnstileToken}`,
+      );
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess(t('验证码已发送，请查收绑定邮箱'));
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError('验证码发送失败，请重试');
+    } finally {
+      setLoginVerifyCodeLoading(false);
+    }
+  };
+
   // 包装的其他登录选项点击处理
   const handleOtherLoginOptionsClick = () => {
     setOtherLoginOptionsLoading(true);
@@ -276,7 +310,12 @@ const LoginForm = () => {
   // 返回登录页面
   const handleBackToLogin = () => {
     setShowTwoFA(false);
-    setInputs({ username: '', password: '', wechat_verification_code: '' });
+    setInputs({
+      username: '',
+      password: '',
+      wechat_verification_code: '',
+      login_verification_code: '',
+    });
   };
 
   const renderOAuthOptions = () => {
@@ -446,6 +485,28 @@ const LoginForm = () => {
                   onChange={(value) => handleChange('password', value)}
                   prefix={<IconLock />}
                 />
+
+                {status.email_verification && (
+                  <Form.Input
+                    field='login_verification_code'
+                    label={t('邮箱验证码')}
+                    placeholder={t('请输入邮箱验证码')}
+                    name='login_verification_code'
+                    onChange={(value) =>
+                      handleChange('login_verification_code', value)
+                    }
+                    suffix={
+                      <Button
+                        theme='borderless'
+                        type='tertiary'
+                        onClick={handleSendLoginVerificationCode}
+                        loading={loginVerifyCodeLoading}
+                      >
+                        {t('发送验证码')}
+                      </Button>
+                    }
+                  />
+                )}
 
                 <div className='space-y-2 pt-2'>
                   <Button
