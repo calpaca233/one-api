@@ -8,6 +8,7 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
     const defaultModules = {
       home: true,
       console: true,
+      tapnow: true,
       pricing: true,
       docs: true,
       about: true,
@@ -26,6 +27,11 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
         text: t('控制台'),
         itemKey: 'console',
         to: '/console',
+      },
+      {
+        text: t('创作工作台'),
+        itemKey: 'tapnow',
+        to: '/console/tapnow',
       },
       {
         text: t('模型广场'),
@@ -59,6 +65,9 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
         return typeof modules.pricing === 'object'
           ? modules.pricing.enabled
           : modules.pricing;
+      }
+      if (link.itemKey === 'tapnow') {
+        return modules.tapnow !== false;
       }
       return modules[link.itemKey] === true;
     });

@@ -36,6 +36,7 @@ const LoginForm = () => {
     username: '',
     password: '',
     wechat_verification_code: '',
+    login_verification_code: '',
   });
   const { username, password } = inputs;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,6 +53,7 @@ const LoginForm = () => {
   const [linuxdoLoading, setLinuxdoLoading] = useState(false);
   const [emailLoginLoading, setEmailLoginLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginVerifyCodeLoading, setLoginVerifyCodeLoading] = useState(false);
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   const [otherLoginOptionsLoading, setOtherLoginOptionsLoading] =
     useState(false);
@@ -60,6 +62,7 @@ const LoginForm = () => {
 
   const logo = getLogo();
   const systemName = getSystemName();
+  const displaySystemName = systemName || t('魔芯开放平台');
 
   let affCode = new URLSearchParams(window.location.search).get('aff');
   if (affCode) {
@@ -132,11 +135,16 @@ const LoginForm = () => {
     setLoginLoading(true);
     try {
       if (username && password) {
+        if (status.email_verification && !inputs.login_verification_code) {
+          showInfo('请输入邮箱验证码');
+          return;
+        }
         const res = await API.post(
           `/api/user/login?turnstile=${turnstileToken}`,
           {
             username,
             password,
+            verification_code: inputs.login_verification_code || '',
           },
         );
         const { success, message, data } = res.data;
@@ -256,6 +264,33 @@ const LoginForm = () => {
     setResetPasswordLoading(false);
   };
 
+  const handleSendLoginVerificationCode = async () => {
+    if (!username) {
+      showInfo(t('请输入您的用户名或邮箱地址'));
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
+      return;
+    }
+    setLoginVerifyCodeLoading(true);
+    try {
+      const res = await API.get(
+        `/api/verification/login?account=${encodeURIComponent(username)}&turnstile=${turnstileToken}`,
+      );
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess(t('验证码已发送，请查收绑定邮箱'));
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError('验证码发送失败，请重试');
+    } finally {
+      setLoginVerifyCodeLoading(false);
+    }
+  };
+
   // 包装的其他登录选项点击处理
   const handleOtherLoginOptionsClick = () => {
     setOtherLoginOptionsLoading(true);
@@ -275,7 +310,12 @@ const LoginForm = () => {
   // 返回登录页面
   const handleBackToLogin = () => {
     setShowTwoFA(false);
-    setInputs({ username: '', password: '', wechat_verification_code: '' });
+    setInputs({
+      username: '',
+      password: '',
+      wechat_verification_code: '',
+      login_verification_code: '',
+    });
   };
 
   const renderOAuthOptions = () => {
@@ -283,13 +323,16 @@ const LoginForm = () => {
       <div className='flex flex-col items-center'>
         <div className='w-full max-w-md'>
           <div className='flex items-center justify-center mb-6 gap-2'>
-            <img src={logo} alt='Logo' className='h-10 rounded-full' />
+            <img src={logo} alt='Logo' className='h-10 w-auto object-contain' />
             <Title heading={3} className='!text-gray-800'>
-              {systemName}
+              {displaySystemName}
             </Title>
           </div>
+          <div className='text-center mb-4'>
+            <Text type='tertiary'>{t('魔芯科技（Magicore Technology）')}</Text>
+          </div>
 
-          <Card className='border-0 !rounded-2xl overflow-hidden'>
+          <Card className='mx-auth-card border-0 !rounded-2xl overflow-hidden'>
             <div className='flex justify-center pt-6 pb-2'>
               <Title heading={3} className='text-gray-800 dark:text-gray-200'>
                 {t('登 录')}
@@ -375,7 +418,7 @@ const LoginForm = () => {
                 <Button
                   theme='solid'
                   type='primary'
-                  className='w-full h-12 flex items-center justify-center bg-black text-white !rounded-full hover:bg-gray-800 transition-colors'
+                  className='w-full h-12 flex items-center justify-center !bg-[#003e7e] !text-white !rounded-full hover:!bg-[#2483c6] transition-colors'
                   icon={<IconMail size='large' />}
                   onClick={handleEmailLoginClick}
                   loading={emailLoginLoading}
@@ -409,11 +452,14 @@ const LoginForm = () => {
       <div className='flex flex-col items-center'>
         <div className='w-full max-w-md'>
           <div className='flex items-center justify-center mb-6 gap-2'>
-            <img src={logo} alt='Logo' className='h-10 rounded-full' />
-            <Title heading={3}>{systemName}</Title>
+            <img src={logo} alt='Logo' className='h-10 w-auto object-contain' />
+            <Title heading={3}>{displaySystemName}</Title>
+          </div>
+          <div className='text-center mb-4'>
+            <Text type='tertiary'>{t('魔芯科技（Magicore Technology）')}</Text>
           </div>
 
-          <Card className='border-0 !rounded-2xl overflow-hidden'>
+          <Card className='mx-auth-card border-0 !rounded-2xl overflow-hidden'>
             <div className='flex justify-center pt-6 pb-2'>
               <Title heading={3} className='text-gray-800 dark:text-gray-200'>
                 {t('登 录')}
@@ -439,6 +485,28 @@ const LoginForm = () => {
                   onChange={(value) => handleChange('password', value)}
                   prefix={<IconLock />}
                 />
+
+                {status.email_verification && (
+                  <Form.Input
+                    field='login_verification_code'
+                    label={t('邮箱验证码')}
+                    placeholder={t('请输入邮箱验证码')}
+                    name='login_verification_code'
+                    onChange={(value) =>
+                      handleChange('login_verification_code', value)
+                    }
+                    suffix={
+                      <Button
+                        theme='borderless'
+                        type='tertiary'
+                        onClick={handleSendLoginVerificationCode}
+                        loading={loginVerifyCodeLoading}
+                      >
+                        {t('发送验证码')}
+                      </Button>
+                    }
+                  />
+                )}
 
                 <div className='space-y-2 pt-2'>
                   <Button
@@ -586,7 +654,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className='relative overflow-hidden bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8'>
+    <div className='mx-auth-page relative overflow-hidden flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8'>
       {/* 背景模糊晕染球 */}
       <div
         className='blur-ball blur-ball-indigo'
@@ -596,7 +664,7 @@ const LoginForm = () => {
         className='blur-ball blur-ball-teal'
         style={{ top: '50%', left: '-120px' }}
       />
-      <div className='w-full max-w-sm mt-[60px]'>
+      <div className='w-full max-w-md mt-[60px]'>
         {showEmailLogin ||
         !(
           status.github_oauth ||

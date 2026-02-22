@@ -82,7 +82,7 @@ function type2secretPrompt(type) {
     case 33:
       return '按照如下格式输入：Ak|Sk|Region';
     case 50:
-      return '按照如下格式输入：AccessKey|SecretKey, 如果上游是 New API，则直接输 ApiKey';
+      return '按照如下格式输入：AccessKey|SecretKey，如果上游是魔芯开放平台兼容网关，则直接输入 ApiKey';
     case 51:
       return '按照如下格式输入：Access Key ID|Secret Access Key';
     default:
@@ -258,7 +258,7 @@ const EditChannelModal = (props) => {
       Modal.confirm({
         title: '警告',
         content:
-          '不需要在末尾加/v1，龙猫云会自动处理，添加后可能导致请求失败，是否继续？',
+          '不需要在末尾加 /v1，魔芯开放平台会自动处理，添加后可能导致请求失败，是否继续？',
         onOk: () => {
           setInputs((inputs) => ({ ...inputs, [name]: value }));
         },
@@ -1729,7 +1729,7 @@ const EditChannelModal = (props) => {
                         <Banner
                           type='warning'
                           description={t(
-                            '如果你对接的是上游One API或者New API等转发项目，请使用OpenAI类型，不要使用此类型，除非你知道你在做什么。',
+                            '如果你对接的是上游魔芯开放平台或其他转发网关，请优先使用 OpenAI 类型，除非你明确知道当前类型的适配差异。',
                           )}
                           className='!rounded-lg'
                         />
@@ -1777,7 +1777,7 @@ const EditChannelModal = (props) => {
                             }
                             showClear
                             extraText={t(
-                              '对于官方渠道，龙猫云已经内置地址，除非是第三方代理站点或者 Azure 的特殊接入地址，否则不需要填写',
+                              '对于官方渠道，魔芯开放平台已内置地址；除非是第三方代理站点或 Azure 特殊接入地址，否则无需填写。',
                             )}
                           />
                         </div>

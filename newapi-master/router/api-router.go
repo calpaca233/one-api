@@ -24,6 +24,7 @@ func SetApiRouter(router *gin.Engine) {
 		//apiRouter.GET("/midjourney", controller.GetMidjourney)
 		apiRouter.GET("/home_page_content", controller.GetHomePageContent)
 		apiRouter.GET("/pricing", middleware.TryUserAuth(), controller.GetPricing)
+		apiRouter.GET("/verification/login", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendLoginVerification)
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), controller.ResetPassword)
@@ -37,6 +38,12 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/oauth/telegram/login", middleware.CriticalRateLimit(), controller.TelegramLogin)
 		apiRouter.GET("/oauth/telegram/bind", middleware.CriticalRateLimit(), controller.TelegramBind)
 		apiRouter.GET("/ratio_config", middleware.CriticalRateLimit(), controller.GetRatioConfig)
+		tapnowRoute := apiRouter.Group("/tapnow")
+		tapnowRoute.Use(middleware.TryUserAuth())
+		{
+			tapnowRoute.GET("/bootstrap", controller.GetTapnowBootstrap)
+			tapnowRoute.GET("/app", controller.GetTapnowApp)
+		}
 
 		apiRouter.POST("/stripe/webhook", controller.StripeWebhook)
 

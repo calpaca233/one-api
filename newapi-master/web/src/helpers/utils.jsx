@@ -32,7 +32,17 @@ export function isRoot() {
 
 export function getSystemName() {
   let system_name = localStorage.getItem('system_name');
-  if (!system_name) return '龙猫云 AI 平台';
+  if (!system_name) return '魔芯开放平台';
+  const normalized = system_name.toLowerCase();
+  if (
+    normalized.includes('new api') ||
+    normalized.includes('new-api') ||
+    normalized.includes('one api') ||
+    normalized.includes('one-api') ||
+    system_name.includes('龙猫')
+  ) {
+    return '魔芯开放平台';
+  }
   return system_name;
 }
 

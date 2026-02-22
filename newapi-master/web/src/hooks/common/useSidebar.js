@@ -20,6 +20,7 @@ export const useSidebar = () => {
       enabled: true,
       detail: true,
       token: true,
+      tapnow: true,
       log: true,
       midjourney: true,
       task: true,
@@ -42,12 +43,23 @@ export const useSidebar = () => {
     },
   };
 
+  const mergeWithDefaultAdminConfig = (config = {}) => {
+    const merged = {};
+    Object.keys(defaultAdminConfig).forEach((sectionKey) => {
+      merged[sectionKey] = {
+        ...defaultAdminConfig[sectionKey],
+        ...(config[sectionKey] || {}),
+      };
+    });
+    return merged;
+  };
+
   // 获取管理员配置
   const adminConfig = useMemo(() => {
     if (statusState?.status?.SidebarModulesAdmin) {
       try {
         const config = JSON.parse(statusState.status.SidebarModulesAdmin);
-        return config;
+        return mergeWithDefaultAdminConfig(config);
       } catch (error) {
         return defaultAdminConfig;
       }

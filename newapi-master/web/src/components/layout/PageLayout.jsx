@@ -28,7 +28,7 @@ const PageLayout = () => {
   const isMobile = useIsMobile();
   const [collapsed, , setCollapsed] = useSidebarCollapsed();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const location = useLocation();
 
   const shouldHideFooter =
@@ -38,7 +38,8 @@ const PageLayout = () => {
   const shouldInnerPadding =
     location.pathname.includes('/console') &&
     !location.pathname.startsWith('/console/chat') &&
-    location.pathname !== '/console/playground';
+    location.pathname !== '/console/playground' &&
+    location.pathname !== '/console/tapnow';
 
   const isConsoleRoute = location.pathname.startsWith('/console');
   const showSider = isConsoleRoute && (!isMobile || drawerOpen);
@@ -215,31 +216,38 @@ const PageLayout = () => {
           </>
         )
         : (
-          <div style={{
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '20px',
-            textAlign: 'center',
-            background: 'linear-gradient(to bottom, #f8f9fa, #e9ecef)'
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '30px 20px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-              width: '90%',
-              maxWidth: '400px'
-            }}>
+          <div
+            style={{
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '20px',
+              textAlign: 'center',
+              background:
+                'radial-gradient(circle at 20% 20%, rgba(36, 131, 198, 0.2) 0%, transparent 45%), radial-gradient(circle at 80% 15%, rgba(205, 220, 241, 0.85) 0%, transparent 42%), linear-gradient(180deg, #f8fbff 0%, #cddcf1 100%)',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(12px)',
+                borderRadius: '16px',
+                padding: '30px 20px',
+                border: '1px solid rgba(139, 158, 183, 0.35)',
+                boxShadow: '0 12px 30px rgba(0, 62, 126, 0.14)',
+                width: '90%',
+                maxWidth: '420px',
+              }}
+            >
               <svg
                 viewBox="0 0 24 24"
                 style={{
                   width: '60px',
                   height: '60px',
                   margin: '0 auto 20px',
-                  color: '#5c7cfa'
+                  color: '#003e7e',
                 }}
               >
                 <path
@@ -251,14 +259,14 @@ const PageLayout = () => {
                 fontSize: '24px',
                 fontWeight: 'bold',
                 marginBottom: '16px',
-                color: '#333'
-              }}>请使用电脑访问</h1>
+                color: '#003e7e',
+              }}>{t('请使用电脑访问')}</h1>
               <p style={{
                 fontSize: '16px',
                 lineHeight: '1.5',
-                color: '#666',
-                marginBottom: '0'
-              }}>当前页面需要在更大的屏幕上查看，请使用电脑或平板电脑横屏模式访问以获得最佳体验。</p>
+                color: '#8b9eb7',
+                marginBottom: '0',
+              }}>{t('当前页面需要在更大的屏幕上查看，请使用电脑或平板电脑横屏模式访问以获得最佳体验。')}</p>
             </div>
           </div>
         )

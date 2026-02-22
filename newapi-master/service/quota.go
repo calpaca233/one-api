@@ -29,13 +29,14 @@ type TokenDetails struct {
 }
 
 type QuotaInfo struct {
-	InputDetails  TokenDetails
-	OutputDetails TokenDetails
-	ModelName     string
-	UsePrice      bool
-	ModelPrice    float64
-	ModelRatio    float64
-	GroupRatio    float64
+	InputDetails    TokenDetails
+	OutputDetails   TokenDetails
+	ModelName       string
+	UsePrice        bool
+	ModelPrice      float64
+	ModelRatio      float64
+	CompletionRatio float64
+	GroupRatio      float64
 }
 
 func hasCustomModelRatio(modelName string, currentRatio float64) bool {
@@ -44,6 +45,20 @@ func hasCustomModelRatio(modelName string, currentRatio float64) bool {
 		return true
 	}
 	return currentRatio != defaultRatio
+}
+
+func resolveTieredModelRatios(modelName string, inputTokens int, modelRatio float64, completionRatio float64) (float64, float64, *ratio_setting.TieredModelRatioRule) {
+	matchedRule, ok := ratio_setting.MatchTieredModelRatio(modelName, inputTokens)
+	if !ok {
+		return modelRatio, completionRatio, nil
+	}
+	modelRatio = matchedRule.InputRatio
+	if matchedRule.InputRatio > 0 {
+		completionRatio = matchedRule.OutputRatio / matchedRule.InputRatio
+	} else {
+		completionRatio = 0
+	}
+	return modelRatio, completionRatio, &matchedRule
 }
 
 func calculateAudioQuota(info QuotaInfo) int {
@@ -56,7 +71,7 @@ func calculateAudioQuota(info QuotaInfo) int {
 		return int(quota.IntPart())
 	}
 
-	completionRatio := decimal.NewFromFloat(ratio_setting.GetCompletionRatio(info.ModelName))
+	completionRatio := decimal.NewFromFloat(info.CompletionRatio)
 	audioRatio := decimal.NewFromFloat(ratio_setting.GetAudioRatio(info.ModelName))
 	audioCompletionRatio := decimal.NewFromFloat(ratio_setting.GetAudioCompletionRatio(info.ModelName))
 
@@ -106,6 +121,7 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 	audioOutTokens := usage.OutputTokenDetails.AudioTokens
 	groupRatio := ratio_setting.GetGroupRatio(relayInfo.UsingGroup)
 	modelRatio, _, _ := ratio_setting.GetModelRatio(modelName)
+	completionRatio := ratio_setting.GetCompletionRatio(modelName)
 
 	autoGroup, exists := ctx.Get("auto_group")
 	if exists {
@@ -120,6 +136,9 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 		actualGroupRatio = userGroupRatio
 	}
 
+	tierInputTokens := common.Max(relayInfo.PromptTokens, usage.InputTokens)
+	modelRatio, completionRatio, _ = resolveTieredModelRatios(modelName, tierInputTokens, modelRatio, completionRatio)
+
 	quotaInfo := QuotaInfo{
 		InputDetails: TokenDetails{
 			TextTokens:  textInputTokens,
@@ -129,10 +148,11 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 			TextTokens:  textOutTokens,
 			AudioTokens: audioOutTokens,
 		},
-		ModelName:  modelName,
-		UsePrice:   relayInfo.UsePrice,
-		ModelRatio: modelRatio,
-		GroupRatio: actualGroupRatio,
+		ModelName:       modelName,
+		UsePrice:        relayInfo.UsePrice,
+		ModelRatio:      modelRatio,
+		CompletionRatio: completionRatio,
+		GroupRatio:      actualGroupRatio,
 	}
 
 	quota := calculateAudioQuota(quotaInfo)
@@ -164,7 +184,7 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 	audioOutTokens := usage.OutputTokenDetails.AudioTokens
 
 	tokenName := ctx.GetString("token_name")
-	completionRatio := decimal.NewFromFloat(ratio_setting.GetCompletionRatio(modelName))
+	completionRatio := ratio_setting.GetCompletionRatio(modelName)
 	audioRatio := decimal.NewFromFloat(ratio_setting.GetAudioRatio(relayInfo.OriginModelName))
 	audioCompletionRatio := decimal.NewFromFloat(ratio_setting.GetAudioCompletionRatio(modelName))
 
@@ -172,6 +192,11 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 	groupRatio := relayInfo.PriceData.GroupRatioInfo.GroupRatio
 	modelPrice := relayInfo.PriceData.ModelPrice
 	usePrice := relayInfo.PriceData.UsePrice
+	tierInputTokens := common.Max(relayInfo.PromptTokens, usage.InputTokens)
+	var tieredRule *ratio_setting.TieredModelRatioRule
+	if !usePrice {
+		modelRatio, completionRatio, tieredRule = resolveTieredModelRatios(modelName, tierInputTokens, modelRatio, completionRatio)
+	}
 
 	quotaInfo := QuotaInfo{
 		InputDetails: TokenDetails{
@@ -182,10 +207,11 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 			TextTokens:  textOutTokens,
 			AudioTokens: audioOutTokens,
 		},
-		ModelName:  modelName,
-		UsePrice:   usePrice,
-		ModelRatio: modelRatio,
-		GroupRatio: groupRatio,
+		ModelName:       modelName,
+		UsePrice:        usePrice,
+		ModelRatio:      modelRatio,
+		CompletionRatio: completionRatio,
+		GroupRatio:      groupRatio,
 	}
 
 	quota := calculateAudioQuota(quotaInfo)
@@ -194,7 +220,11 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 	var logContent string
 	if !usePrice {
 		logContent = fmt.Sprintf("模型倍率 %.2f，补全倍率 %.2f，音频倍率 %.2f，音频补全倍率 %.2f，分组倍率 %.2f",
-			modelRatio, completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), groupRatio)
+			modelRatio, completionRatio, audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), groupRatio)
+		if tieredRule != nil {
+			logContent += fmt.Sprintf("，阶梯计费：输入Token<=%s，输入倍率 %.4f，输出倍率 %.4f",
+				ratio_setting.TieredRuleUpperBoundText(tieredRule.MaxInputTokens), tieredRule.InputRatio, tieredRule.OutputRatio)
+		}
 	} else {
 		logContent = fmt.Sprintf("模型价格 %.2f，分组倍率 %.2f", modelPrice, groupRatio)
 	}
@@ -217,7 +247,14 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 		logContent += ", " + extraContent
 	}
 	other := GenerateWssOtherInfo(ctx, relayInfo, usage, modelRatio, groupRatio,
-		completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+		completionRatio, audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+	if tieredRule != nil {
+		other["tiered_billing"] = true
+		other["tiered_input_tokens"] = tierInputTokens
+		other["tiered_max_input_tokens"] = tieredRule.MaxInputTokens
+		other["tiered_input_ratio"] = tieredRule.InputRatio
+		other["tiered_output_ratio"] = tieredRule.OutputRatio
+	}
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{
 		ChannelId:        relayInfo.ChannelId,
 		PromptTokens:     usage.InputTokens,
@@ -240,6 +277,10 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 	promptTokens := usage.PromptTokens
 	completionTokens := usage.CompletionTokens
 	modelName := relayInfo.OriginModelName
+	tierInputTokens := promptTokens
+	if tierInputTokens <= 0 {
+		tierInputTokens = relayInfo.PromptTokens
+	}
 
 	tokenName := ctx.GetString("token_name")
 	completionRatio := relayInfo.PriceData.CompletionRatio
@@ -248,6 +289,10 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 	modelPrice := relayInfo.PriceData.ModelPrice
 	cacheRatio := relayInfo.PriceData.CacheRatio
 	cacheTokens := usage.PromptTokensDetails.CachedTokens
+	var tieredRule *ratio_setting.TieredModelRatioRule
+	if !relayInfo.PriceData.UsePrice {
+		modelRatio, completionRatio, tieredRule = resolveTieredModelRatios(modelName, tierInputTokens, modelRatio, completionRatio)
+	}
 
 	cacheCreationRatio := relayInfo.PriceData.CacheCreationRatio
 	cacheCreationTokens := usage.PromptTokensDetails.CachedCreationTokens
@@ -322,6 +367,15 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 
 	other := GenerateClaudeOtherInfo(ctx, relayInfo, modelRatio, groupRatio, completionRatio,
 		cacheTokens, cacheRatio, cacheCreationTokens, cacheCreationRatio, modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+	if tieredRule != nil {
+		logContent += fmt.Sprintf("，阶梯计费：输入Token<=%s，输入倍率 %.4f，输出倍率 %.4f",
+			ratio_setting.TieredRuleUpperBoundText(tieredRule.MaxInputTokens), tieredRule.InputRatio, tieredRule.OutputRatio)
+		other["tiered_billing"] = true
+		other["tiered_input_tokens"] = tierInputTokens
+		other["tiered_max_input_tokens"] = tieredRule.MaxInputTokens
+		other["tiered_input_ratio"] = tieredRule.InputRatio
+		other["tiered_output_ratio"] = tieredRule.OutputRatio
+	}
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{
 		ChannelId:        relayInfo.ChannelId,
 		PromptTokens:     promptTokens,
@@ -370,7 +424,7 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 	audioOutTokens := usage.CompletionTokenDetails.AudioTokens
 
 	tokenName := ctx.GetString("token_name")
-	completionRatio := decimal.NewFromFloat(ratio_setting.GetCompletionRatio(relayInfo.OriginModelName))
+	completionRatio := ratio_setting.GetCompletionRatio(relayInfo.OriginModelName)
 	audioRatio := decimal.NewFromFloat(ratio_setting.GetAudioRatio(relayInfo.OriginModelName))
 	audioCompletionRatio := decimal.NewFromFloat(ratio_setting.GetAudioCompletionRatio(relayInfo.OriginModelName))
 
@@ -378,6 +432,14 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 	groupRatio := relayInfo.PriceData.GroupRatioInfo.GroupRatio
 	modelPrice := relayInfo.PriceData.ModelPrice
 	usePrice := relayInfo.PriceData.UsePrice
+	tierInputTokens := usage.PromptTokens
+	if tierInputTokens <= 0 {
+		tierInputTokens = relayInfo.PromptTokens
+	}
+	var tieredRule *ratio_setting.TieredModelRatioRule
+	if !usePrice {
+		modelRatio, completionRatio, tieredRule = resolveTieredModelRatios(relayInfo.OriginModelName, tierInputTokens, modelRatio, completionRatio)
+	}
 
 	quotaInfo := QuotaInfo{
 		InputDetails: TokenDetails{
@@ -388,10 +450,11 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 			TextTokens:  textOutTokens,
 			AudioTokens: audioOutTokens,
 		},
-		ModelName:  relayInfo.OriginModelName,
-		UsePrice:   usePrice,
-		ModelRatio: modelRatio,
-		GroupRatio: groupRatio,
+		ModelName:       relayInfo.OriginModelName,
+		UsePrice:        usePrice,
+		ModelRatio:      modelRatio,
+		CompletionRatio: completionRatio,
+		GroupRatio:      groupRatio,
 	}
 
 	quota := calculateAudioQuota(quotaInfo)
@@ -400,7 +463,11 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 	var logContent string
 	if !usePrice {
 		logContent = fmt.Sprintf("模型倍率 %.2f，补全倍率 %.2f，音频倍率 %.2f，音频补全倍率 %.2f，分组倍率 %.2f",
-			modelRatio, completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), groupRatio)
+			modelRatio, completionRatio, audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), groupRatio)
+		if tieredRule != nil {
+			logContent += fmt.Sprintf("，阶梯计费：输入Token<=%s，输入倍率 %.4f，输出倍率 %.4f",
+				ratio_setting.TieredRuleUpperBoundText(tieredRule.MaxInputTokens), tieredRule.InputRatio, tieredRule.OutputRatio)
+		}
 	} else {
 		logContent = fmt.Sprintf("模型价格 %.2f，分组倍率 %.2f", modelPrice, groupRatio)
 	}
@@ -446,7 +513,14 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 		logContent += ", " + extraContent
 	}
 	other := GenerateAudioOtherInfo(ctx, relayInfo, usage, modelRatio, groupRatio,
-		completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+		completionRatio, audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+	if tieredRule != nil {
+		other["tiered_billing"] = true
+		other["tiered_input_tokens"] = tierInputTokens
+		other["tiered_max_input_tokens"] = tieredRule.MaxInputTokens
+		other["tiered_input_ratio"] = tieredRule.InputRatio
+		other["tiered_output_ratio"] = tieredRule.OutputRatio
+	}
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{
 		ChannelId:        relayInfo.ChannelId,
 		PromptTokens:     usage.PromptTokens,

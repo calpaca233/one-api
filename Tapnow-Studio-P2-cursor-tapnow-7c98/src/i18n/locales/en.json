@@ -112,6 +112,13 @@
     "使用 http://127.0.0.1:9527/proxy": "Use http://127.0.0.1:9527/proxy",
     "使用 {proxy}": "Use {proxy}",
     "例如: https://your-domain.com/sora/v1/characters": "e.g.: https://your-domain.com/sora/v1/characters",
+    "默认自动填充，可根据服务商要求修改路径": "Autofilled by default; you can adjust it for specific provider paths",
+    "云端托管模式下此地址由平台自动下发，不可手动修改": "In managed cloud mode, this endpoint is distributed by the platform and cannot be edited manually",
+    "云端托管模式不支持本地保存服务": "Managed cloud mode does not support local save service",
+    "云端托管模式已禁用“保存到本地”节点": "Managed cloud mode has disabled the \"Save to Local\" node",
+    "云端托管模式已禁用本地保存服务。请直接使用平台历史记录或下载功能管理产出文件。": "Managed cloud mode has disabled local save service. Please use platform history or download features to manage outputs.",
+    "模型 {{model}} 未在魔芯开放平台中开通，请联系管理员配置后再使用": "Model {{model}} is not enabled in Magicore Open Platform. Please contact your administrator to configure it before use.",
+    "当前账号暂无可用模型，请先在魔芯开放平台设置 Tapnow 托管模型，并为当前分组开通对应模型": "No managed model is available for this account. Configure Tapnow managed models in Magicore Open Platform and enable corresponding models for the current user group.",
     "例如: size/quality": "e.g.: size/quality",
     "例如：gemini-3-pro-image-preview": "e.g.: gemini-3-pro-image-preview",
     "例如：openai.image / jimeng.video": "e.g. openai.image / jimeng.video",
@@ -731,5 +738,10 @@
     "黑名单 = 积分耗尽，暂停 = 临时错误 (60分钟后自动恢复) ，熔断 = 短时大量1006错误保护": "Blacklist = Credits depleted, Paused = Temporary error (auto-resume after 60 mins), Circuit Brk = Short-term 1006 error protection",
     "黑名单 = 积分耗尽，暂停 = 临时错误（60分钟后自动恢复），熔断 = 短时大量1006错误保护": "Blacklist = Credits depleted, Paused = Temporary error (60m auto-resume), Circuit Breaker = Short-term 1006 protection",
     "黑名单已清空": "Blacklist cleared",
-    "默认使用 history": "Default use history"
+    "默认使用 history": "Default use history",
+    "正在连接魔芯开放平台...": "Connecting to Magicore Open Platform...",
+    "正在从云端同步你的模型与令牌配置": "Syncing your models and tokens from cloud...",
+    "连接魔芯开放平台失败": "Failed to connect to Magicore Open Platform",
+    "返回用户中心": "Back to user center",
+    "用户中心": "User Center"
 }

@@ -10,7 +10,7 @@ type GeneralSetting struct {
 
 // 默认配置
 var generalSetting = GeneralSetting{
-	DocsLink:            "https://docs.newapi.pro",
+	DocsLink:            "https://www.kokoni3d.com",
 	PingIntervalEnabled: false,
 	PingIntervalSeconds: 60,
 }

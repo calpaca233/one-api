@@ -1,52 +1,18 @@
 
 
-import React, { useContext, useEffect, useState } from 'react';
-import {
-  Button,
-  Typography,
-  Input,
-  ScrollList,
-  ScrollItem,
-} from '@douyinfe/semi-ui';
-import { API, showError, copy, showSuccess } from '../../helpers';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { Button, Card, Input, ScrollItem, ScrollList } from '@douyinfe/semi-ui';
+import { API, copy, showError, showSuccess } from '../../helpers';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 import { API_ENDPOINTS } from '../../constants/common.constant';
 import { StatusContext } from '../../context/Status';
 import { useActualTheme } from '../../context/Theme';
 import { marked } from 'marked';
 import { useTranslation } from 'react-i18next';
-import {
-  IconGithubLogo,
-  IconPlay,
-  IconFile,
-  IconCopy,
-} from '@douyinfe/semi-icons';
+import { IconCopy, IconFile, IconPlay } from '@douyinfe/semi-icons';
 import { Link } from 'react-router-dom';
 import NoticeModal from '../../components/layout/NoticeModal';
-import {
-  Moonshot,
-  OpenAI,
-  XAI,
-  Zhipu,
-  Volcengine,
-  Cohere,
-  Claude,
-  Gemini,
-  Suno,
-  Minimax,
-  Wenxin,
-  Spark,
-  Qingyan,
-  DeepSeek,
-  Qwen,
-  Midjourney,
-  Grok,
-  AzureAI,
-  Hunyuan,
-  Xinference,
-} from '@lobehub/icons';
-
-const { Text } = Typography;
+import LanguageSelector from '../../components/layout/headerbar/LanguageSelector';
 
 const Home = () => {
   const { t, i18n } = useTranslation();
@@ -56,13 +22,30 @@ const Home = () => {
   const [homePageContent, setHomePageContent] = useState('');
   const [noticeVisible, setNoticeVisible] = useState(false);
   const isMobile = useIsMobile();
-  const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
-  const docsLink = statusState?.status?.docs_link || '';
+  const docsLink = statusState?.status?.docs_link || 'https://www.kokoni3d.com';
   const serverAddress =
     statusState?.status?.server_address || `${window.location.origin}`;
   const endpointItems = API_ENDPOINTS.map((e) => ({ value: e }));
   const [endpointIndex, setEndpointIndex] = useState(0);
   const isChinese = i18n.language.startsWith('zh');
+  const currentLang = i18n.language === 'en' ? 'en' : 'zh';
+
+  const heroContent = useMemo(
+    () => ({
+      badge: 'KOKONI3D',
+      title: isChinese ? '魔芯开放平台' : 'Magicore Open Platform',
+      subtitle: isChinese
+        ? '企业级模型开放接口服务'
+        : 'Enterprise AI API Gateway',
+      description: isChinese
+        ? '统一接入 · 稳定可靠 · 面向全球开发者'
+        : 'Unified Access · Reliable Infrastructure · Built for Global Developers',
+      features: isChinese
+        ? ['高可用网关', '灵活扩展能力', '企业级安全']
+        : ['Highly Available Gateway', 'Flexible Extensibility', 'Enterprise Security'],
+    }),
+    [isChinese],
+  );
 
   const displayHomePageContent = async () => {
     setHomePageContent(localStorage.getItem('home_page_content') || '');
@@ -76,7 +59,6 @@ const Home = () => {
       setHomePageContent(content);
       localStorage.setItem('home_page_content', content);
 
-      // 如果内容是 URL，则发送主题模式
       if (data.startsWith('https://')) {
         const iframe = document.querySelector('iframe');
         if (iframe) {
@@ -88,7 +70,7 @@ const Home = () => {
       }
     } else {
       showError(message);
-      setHomePageContent('加载首页内容失败...');
+      setHomePageContent(t('加载首页内容失败...'));
     }
     setHomePageContentLoaded(true);
   };
@@ -98,6 +80,10 @@ const Home = () => {
     if (ok) {
       showSuccess(t('已复制到剪切板'));
     }
+  };
+
+  const handleLanguageChange = (lang) => {
+    i18n.changeLanguage(lang);
   };
 
   useEffect(() => {
@@ -139,189 +125,79 @@ const Home = () => {
         isMobile={isMobile}
       />
       {homePageContentLoaded && homePageContent === '' ? (
-        <div className='w-full overflow-x-hidden'>
-          {/* Banner 部分 */}
-          <div className='w-full  border-semi-color-border h-[400px] md:h-[600px] lg:h-[900px] relative overflow-x-hidden'>
-            {/* 背景模糊晕染球 */}
-            <div className='blur-ball blur-ball-indigo' />
-            <div className='blur-ball blur-ball-teal' />
-            <div className='flex items-center justify-center h-full px-4 py-12 md:py-16 lg:py-20'>
-              {/* 居中内容区 */}
-              <div className='flex flex-col items-center justify-center text-center max-w-4xl mx-auto'>
-                <div className='flex flex-col items-center justify-center mb-6 md:mb-8'>
-                  <h1
-                    className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-semi-color-text-0 leading-tight ${isChinese ? 'tracking-wide md:tracking-wider' : ''}`}
-                  >
-                    {i18n.language === 'en' ? (
-                      <>
-                        The Unified
-                        <br />
-                        <span className='shine-text'>LLMs API Gateway</span>
-                      </>
-                    ) : (
-                      <>
-                        统一的
-                        <br />
-                        <span className='shine-text'>大模型接口网关</span>
-                      </>
-                    )}
-                  </h1>
-                  {/* <p className='text-base md:text-lg lg:text-xl text-semi-color-text-1 mt-4 md:mt-6 max-w-xl'>
-                    {t('更好的价格，更好的稳定性，只需要将模型基址替换为：')}
-                  </p> */}
-                  {/* BASE URL 与端点选择 */}
-                  <div className='flex flex-col md:flex-row items-center justify-center gap-4 w-full mt-4 md:mt-6 max-w-md'>
-                    <Input
-                      readonly
-                      value={serverAddress}
-                      className='flex-1 !rounded-full'
-                      size={isMobile ? 'default' : 'large'}
-                      suffix={
-                        <div className='flex items-center gap-2'>
-                          <ScrollList
-                            bodyHeight={32}
-                            style={{ border: 'unset', boxShadow: 'unset' }}
-                          >
-                            <ScrollItem
-                              mode='wheel'
-                              cycled={true}
-                              list={endpointItems}
-                              selectedIndex={endpointIndex}
-                              onSelect={({ index }) => setEndpointIndex(index)}
-                            />
-                          </ScrollList>
-                          <Button
-                            type='primary'
-                            onClick={handleCopyBaseURL}
-                            icon={<IconCopy />}
-                            className='!rounded-full'
-                          />
-                        </div>
-                      }
+        <div className='mx-home-hero w-full overflow-x-hidden'>
+          <div className='mx-home-hero-inner'>
+            <div className='mx-home-language-switch'>
+              <LanguageSelector
+                currentLang={currentLang}
+                onLanguageChange={handleLanguageChange}
+                t={t}
+              />
+            </div>
+            <div className='mx-home-badge'>{heroContent.badge}</div>
+            <h1 className='mx-home-title'>{heroContent.title}</h1>
+            <p className='mx-home-subtitle'>{heroContent.subtitle}</p>
+            <p className='mx-home-description'>{heroContent.description}</p>
+
+            <div className='mx-home-endpoint mt-6 md:mt-8'>
+              <Input
+                readonly
+                value={serverAddress}
+                className='mx-home-input'
+                size={isMobile ? 'default' : 'large'}
+                suffix={
+                  <div className='flex items-center gap-2'>
+                    <ScrollList
+                      bodyHeight={32}
+                      style={{ border: 'unset', boxShadow: 'unset' }}
+                    >
+                      <ScrollItem
+                        mode='wheel'
+                        cycled={true}
+                        list={endpointItems}
+                        selectedIndex={endpointIndex}
+                        onSelect={({ index }) => setEndpointIndex(index)}
+                      />
+                    </ScrollList>
+                    <Button
+                      type='primary'
+                      onClick={handleCopyBaseURL}
+                      icon={<IconCopy />}
+                      className='!rounded-full'
                     />
                   </div>
-                </div>
+                }
+              />
+            </div>
 
-                {/* 操作按钮 */}
-                <div className='flex flex-row gap-4 justify-center items-center'>
-                  <Link to='/console'>
-                    <Button
-                      theme='solid'
-                      type='primary'
-                      size={isMobile ? 'default' : 'large'}
-                      className='!rounded-3xl px-8 py-2'
-                      icon={<IconPlay />}
-                    >
-                      {t('获取密钥')}
-                    </Button>
-                  </Link>
-                  {/* {isDemoSiteMode && statusState?.status?.version ? (
-                    <Button
-                      size={isMobile ? 'default' : 'large'}
-                      className='flex items-center !rounded-3xl px-6 py-2'
-                      icon={<IconGithubLogo />}
-                      onClick={() =>
-                        window.open(
-                          'https://github.com/QuantumNous/new-api',
-                          '_blank',
-                        )
-                      }
-                    >
-                      {statusState.status.version}
-                    </Button>
-                  ) : (
-                    docsLink && (
-                      <Button
-                        size={isMobile ? 'default' : 'large'}
-                        className='flex items-center !rounded-3xl px-6 py-2'
-                        icon={<IconFile />}
-                        onClick={() => window.open(docsLink, '_blank')}
-                      >
-                        {t('文档')}
-                      </Button>
-                    )
-                  )} */}
-                </div>
+            <div className='mx-home-actions'>
+              <Link to='/console'>
+                <Button
+                  theme='solid'
+                  type='primary'
+                  size={isMobile ? 'default' : 'large'}
+                  className='mx-brand-primary-btn'
+                  icon={<IconPlay />}
+                >
+                  {t('进入控制台')}
+                </Button>
+              </Link>
+              <Button
+                size={isMobile ? 'default' : 'large'}
+                className='mx-brand-outline-btn'
+                icon={<IconFile />}
+                onClick={() => window.open(docsLink, '_blank')}
+              >
+                {t('文档')}
+              </Button>
+            </div>
 
-                {/* 框架兼容性图标 */}
-                {/* <div className='mt-12 md:mt-16 lg:mt-20 w-full'> */}
-                  {/* <div className='flex items-center mb-6 md:mb-8 justify-center'>
-                    <Text
-                      type='tertiary'
-                      className='text-lg md:text-xl lg:text-2xl font-light'
-                    >
-                      {t('支持众多的大模型供应商')}
-                    </Text>
-                  </div> */}
-                  {/* <div className='flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-6 lg:gap-8 max-w-5xl mx-auto px-4'>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Moonshot size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <OpenAI size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <XAI size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Zhipu.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Volcengine.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Cohere.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Claude.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Gemini.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Suno size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Minimax.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Wenxin.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Spark.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Qingyan.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <DeepSeek.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Qwen.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Midjourney size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Grok size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <AzureAI.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Hunyuan.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Xinference.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Typography.Text className='!text-lg sm:!text-xl md:!text-2xl lg:!text-3xl font-bold'>
-                        30+
-                      </Typography.Text>
-                    </div>
-                  </div> */}
-                {/* </div> */}
-              </div>
+            <div className='mx-home-feature-grid'>
+              {heroContent.features.map((feature) => (
+                <Card key={feature} className='mx-home-feature-card' shadows='hover'>
+                  {feature}
+                </Card>
+              ))}
             </div>
           </div>
         </div>

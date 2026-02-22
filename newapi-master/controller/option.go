@@ -128,6 +128,24 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ModelTieredRatio":
+		err = ratio_setting.CheckModelTieredRatio(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case "TapnowManagedModels":
+		err = setting.CheckTapnowManagedModels(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 	case "ModelRequestRateLimitGroup":
 		err = setting.CheckModelRequestRateLimitGroup(option.Value.(string))
 		if err != nil {
