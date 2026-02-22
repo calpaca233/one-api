@@ -89,7 +89,10 @@ func parseAndNormalizeTapnowManagedModelsJSON(jsonStr string) ([]map[string]any,
 		modelIDSet[modelKey] = struct{}{}
 		normalizedItem["id"] = modelID
 
-		modelType := normalizeTapnowModelType(anyToString(normalizedItem["type"]), modelID)
+		modelType, err := normalizeTapnowModelType(anyToString(normalizedItem["type"]), modelID)
+		if err != nil {
+			return nil, fmt.Errorf("tapnow model %s type invalid: %w", modelID, err)
+		}
 		normalizedItem["type"] = modelType
 
 		provider := strings.TrimSpace(anyToString(normalizedItem["provider"]))
@@ -123,17 +126,20 @@ func parseAndNormalizeTapnowManagedModelsJSON(jsonStr string) ([]map[string]any,
 	return normalized, nil
 }
 
-func normalizeTapnowModelType(rawType, modelID string) string {
+func normalizeTapnowModelType(rawType, modelID string) (string, error) {
 	normalized := strings.ToLower(strings.TrimSpace(rawType))
 	switch normalized {
 	case "chat", "text", "llm":
-		return "Chat"
+		return "Chat", nil
 	case "image", "img":
-		return "Image"
+		return "Image", nil
 	case "video", "vid":
-		return "Video"
+		return "Video", nil
 	}
-	return inferTapnowManagedModelType(modelID)
+	if normalized == "" {
+		return inferTapnowManagedModelType(modelID), nil
+	}
+	return "", fmt.Errorf("unsupported type %s, only Chat/Image/Video are allowed", rawType)
 }
 
 func inferTapnowManagedModelType(modelID string) string {
