@@ -64,6 +64,7 @@ func TestGetModelTieredMaxRatio(t *testing.T) {
 	config := `{
 		"qwen-plus": [
 			{"max_input_tokens": 32000, "input_ratio": 1.2, "output_ratio": 3.6},
+			{"max_input_tokens": 128000, "input_ratio": 1.8, "output_ratio": 7.8},
 			{"max_input_tokens": 0, "input_ratio": 2.0, "output_ratio": 6.5}
 		]
 	}`

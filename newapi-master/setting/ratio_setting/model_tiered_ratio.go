@@ -80,17 +80,8 @@ func GetModelTieredMaxRatio(name string) (float64, float64, bool) {
 	if !ok || len(rules) == 0 {
 		return 0, 0, false
 	}
-	maxInputRatio := 0.0
-	maxOutputRatio := 0.0
-	for _, rule := range rules {
-		if rule.InputRatio > maxInputRatio {
-			maxInputRatio = rule.InputRatio
-		}
-		if rule.OutputRatio > maxOutputRatio {
-			maxOutputRatio = rule.OutputRatio
-		}
-	}
-	return maxInputRatio, maxOutputRatio, true
+	highestTier := rules[len(rules)-1]
+	return highestTier.InputRatio, highestTier.OutputRatio, true
 }
 
 func getTieredRulesByModelName(name string) ([]TieredModelRatioRule, bool) {
