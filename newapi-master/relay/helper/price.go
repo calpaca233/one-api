@@ -3,8 +3,8 @@ package helper
 import (
 	"fmt"
 	"one-api/common"
-	relaycommon "one-api/relay/common"
 	"one-api/model"
+	relaycommon "one-api/relay/common"
 	"one-api/setting/ratio_setting"
 	"one-api/types"
 
@@ -32,7 +32,7 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 	// 优先检查用户模型专属倍率
 	userModelRatio, hasUserModelRatio := model.GetUserModelRatio(relayInfo.UserId, relayInfo.OriginModelName)
 	println(fmt.Sprintf("GetUserModelRatio result: user_id=%d, model=%s, ratio=%.4f, hasRatio=%t", relayInfo.UserId, relayInfo.OriginModelName, userModelRatio, hasUserModelRatio))
-	
+
 	if hasUserModelRatio {
 		// 用户模型专属倍率优先级最高
 		groupRatioInfo.GroupRatio = userModelRatio
@@ -68,9 +68,10 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	var imageRatio float64
 	var cacheCreationRatio float64
 	if !usePrice {
-		preConsumedTokens := common.Max(promptTokens, common.PreConsumedQuota)
-		if meta.MaxTokens != 0 {
-			preConsumedTokens += meta.MaxTokens
+		preConsumedPromptTokens := common.Max(promptTokens, common.PreConsumedQuota)
+		preConsumedCompletionTokens := 0
+		if meta != nil && meta.MaxTokens != 0 {
+			preConsumedCompletionTokens = meta.MaxTokens
 		}
 		var success bool
 		var matchName string
@@ -88,8 +89,24 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		cacheRatio, _ = ratio_setting.GetCacheRatio(info.OriginModelName)
 		cacheCreationRatio, _ = ratio_setting.GetCreateCacheRatio(info.OriginModelName)
 		imageRatio, _ = ratio_setting.GetImageRatio(info.OriginModelName)
-		ratio := modelRatio * groupRatioInfo.GroupRatio
-		preConsumedQuota = int(float64(preConsumedTokens) * ratio)
+
+		// 对配置了阶梯计费的模型，预扣费使用该模型所有区间的最高输入/输出倍率进行估算，
+		// 请求结束后再按实际输入 token 命中的区间重算并退还差额，避免中途因余额不足失败。
+		maxTierInputRatio, maxTierOutputRatio, useTieredRatio := ratio_setting.GetModelTieredMaxRatio(info.OriginModelName)
+		if useTieredRatio {
+			modelRatio = maxTierInputRatio
+			if maxTierInputRatio > 0 {
+				completionRatio = maxTierOutputRatio / maxTierInputRatio
+			} else {
+				completionRatio = 0
+			}
+			preConsumedQuota = int((float64(preConsumedPromptTokens)*maxTierInputRatio +
+				float64(preConsumedCompletionTokens)*maxTierOutputRatio) * groupRatioInfo.GroupRatio)
+		} else {
+			preConsumedTokens := preConsumedPromptTokens + preConsumedCompletionTokens
+			ratio := modelRatio * groupRatioInfo.GroupRatio
+			preConsumedQuota = int(float64(preConsumedTokens) * ratio)
+		}
 	} else {
 		if meta.ImagePriceRatio != 0 {
 			modelPrice = modelPrice * meta.ImagePriceRatio

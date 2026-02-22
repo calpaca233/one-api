@@ -15,6 +15,7 @@ import (
 	"one-api/service"
 	"one-api/setting/model_setting"
 	"one-api/setting/operation_setting"
+	"one-api/setting/ratio_setting"
 	"one-api/types"
 	"strings"
 	"time"
@@ -207,6 +208,18 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	groupRatio := relayInfo.PriceData.GroupRatioInfo.GroupRatio
 	modelPrice := relayInfo.PriceData.ModelPrice
 	cachedCreationRatio := relayInfo.PriceData.CacheCreationRatio
+	var tieredRule *ratio_setting.TieredModelRatioRule
+	if !relayInfo.PriceData.UsePrice {
+		if matchedRule, ok := ratio_setting.MatchTieredModelRatio(modelName, promptTokens); ok {
+			modelRatio = matchedRule.InputRatio
+			if matchedRule.InputRatio > 0 {
+				completionRatio = matchedRule.OutputRatio / matchedRule.InputRatio
+			} else {
+				completionRatio = 0
+			}
+			tieredRule = &matchedRule
+		}
+	}
 
 	// Convert values to decimal for precise calculation
 	dPromptTokens := decimal.NewFromInt(int64(promptTokens))
@@ -275,6 +288,10 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 			extraContent += fmt.Sprintf("File Search 调用 %d 次，调用花费 %s",
 				fileSearchTool.CallCount, dFileSearchQuota.String())
 		}
+	}
+	if tieredRule != nil {
+		extraContent += fmt.Sprintf("阶梯计费：输入Token<=%s，输入倍率 %.4f，输出倍率 %.4f",
+			ratio_setting.TieredRuleUpperBoundText(tieredRule.MaxInputTokens), tieredRule.InputRatio, tieredRule.OutputRatio)
 	}
 
 	var quotaCalculateDecimal decimal.Decimal
@@ -391,6 +408,13 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		logContent += ", " + extraContent
 	}
 	other := service.GenerateTextOtherInfo(ctx, relayInfo, modelRatio, groupRatio, completionRatio, cacheTokens, cacheRatio, modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+	if tieredRule != nil {
+		other["tiered_billing"] = true
+		other["tiered_input_tokens"] = promptTokens
+		other["tiered_max_input_tokens"] = tieredRule.MaxInputTokens
+		other["tiered_input_ratio"] = tieredRule.InputRatio
+		other["tiered_output_ratio"] = tieredRule.OutputRatio
+	}
 	if imageTokens != 0 {
 		other["image"] = true
 		other["image_ratio"] = imageRatio

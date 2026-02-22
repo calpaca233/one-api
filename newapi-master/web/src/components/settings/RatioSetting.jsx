@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import ModelSettingsVisualEditor from '../../pages/Setting/Ratio/ModelSettingsVisualEditor';
 import ModelRatioNotSetEditor from '../../pages/Setting/Ratio/ModelRationNotSetEditor';
+import ModelTieredRatioSettings from '../../pages/Setting/Ratio/ModelTieredRatioSettings';
 import UserModelRatioVisualConfig from './UserModelRatioVisualConfig';
 
 import { API, showError, toBoolean } from '../../helpers';
@@ -16,6 +17,7 @@ const RatioSetting = () => {
     ModelRatio: '',
     CacheRatio: '',
     CompletionRatio: '',
+    ModelTieredRatio: '',
     GroupRatio: '',
     GroupGroupRatio: '',
     AutoGroups: '',
@@ -40,7 +42,8 @@ const RatioSetting = () => {
           item.key === 'UserUsableGroups' ||
           item.key === 'CompletionRatio' ||
           item.key === 'ModelPrice' ||
-          item.key === 'CacheRatio'
+          item.key === 'CacheRatio' ||
+          item.key === 'ModelTieredRatio'
         ) {
           try {
             item.value = JSON.stringify(JSON.parse(item.value), null, 2);
@@ -92,6 +95,9 @@ const RatioSetting = () => {
           </Tabs.TabPane>
           <Tabs.TabPane tab={t('未设置倍率模型')} itemKey='unset_models'>
             <ModelRatioNotSetEditor options={inputs} refresh={onRefresh} />
+          </Tabs.TabPane>
+          <Tabs.TabPane tab={t('阶梯计费设置')} itemKey='tiered_ratio'>
+            <ModelTieredRatioSettings options={inputs} refresh={onRefresh} />
           </Tabs.TabPane>
           {/* <Tabs.TabPane tab={t('用户模型倍率')} itemKey='user_model_ratio'>
             <UserModelRatioVisualConfig />
