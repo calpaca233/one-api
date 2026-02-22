@@ -12,6 +12,7 @@ import {
 import { isRoot } from '../../helpers';
 import RatioSetting from '../../components/settings/RatioSetting';
 import SystemSetting from '../../components/settings/SystemSetting';
+import TapnowSetting from '../../components/settings/TapnowSetting';
 
 const Setting = () => {
   const { t } = useTranslation();
@@ -90,6 +91,16 @@ const Setting = () => {
       ),
       content: <SystemSetting />,
       itemKey: 'system',
+    });
+    panes.push({
+      tab: (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <Cog size={18} />
+          {t('Tapnow 托管设置')}
+        </span>
+      ),
+      content: <TapnowSetting />,
+      itemKey: 'tapnow',
     });
     // panes.push({
     //   tab: (

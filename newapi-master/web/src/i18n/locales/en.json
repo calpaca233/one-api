@@ -2142,5 +2142,20 @@
   "阶梯计费已保存": "Tiered billing has been saved",
   "创作工作台": "Creative Studio",
   "Tapnow 创作工作台": "Tapnow Creative Studio",
-  "Tapnow Studio 云端创作入口": "Tapnow Studio cloud entry"
+  "Tapnow Studio 云端创作入口": "Tapnow Studio cloud entry",
+  "Tapnow 托管设置": "Tapnow Managed Settings",
+  "请输入合法的 Tapnow 托管模型 JSON": "Please enter valid Tapnow managed models JSON",
+  "Tapnow 托管模型配置必须是 JSON 数组": "Tapnow managed model config must be a JSON array",
+  "第 {{index}} 个模型配置必须是对象": "Model config #{{index}} must be an object",
+  "第 {{index}} 个模型缺少 id": "Model config #{{index}} is missing id",
+  "模型 {{id}} 重复，请检查": "Model {{id}} is duplicated, please check",
+  "模型 {{id}} 的 type 仅支持 Chat/Image/Video": "Model {{id}} type only supports Chat/Image/Video",
+  "模型 {{id}} 的 durations 必须是数组": "Model {{id}} durations must be an array",
+  "Tapnow 托管模型配置已保存": "Tapnow managed model config saved",
+  "配置 Tapnow 云端托管模式可调用模型。此配置由平台统一下发，用户侧不可编辑。": "Configure callable models for Tapnow managed cloud mode. This config is distributed by the platform and cannot be edited by end users.",
+  "托管模型配置 JSON": "Managed model config JSON",
+  "请输入 Tapnow 托管模型 JSON": "Enter Tapnow managed model JSON",
+  "每个模型至少需要 id 字段，可选 type/provider/durations 及其他高级属性（如 ratioLimits、defaultRatio、videoResolutions、customParams 等）。": "Each model requires at least id. Optional fields include type/provider/durations and advanced attributes (e.g. ratioLimits, defaultRatio, videoResolutions, customParams).",
+  "示例配置": "Example config",
+  "保存 Tapnow 托管模型配置": "Save Tapnow managed model config"
 }

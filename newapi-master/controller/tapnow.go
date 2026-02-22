@@ -9,7 +9,6 @@ import (
 	"one-api/setting"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -117,7 +116,7 @@ func getOrCreateTapnowTokenKey(userID int) (string, error) {
 	return "", lastErr
 }
 
-func collectTapnowModels(group string) []string {
+func collectTapnowEnabledModelSet(group string) map[string]struct{} {
 	usableGroups := setting.GetUserUsableGroups(group)
 	modelSet := make(map[string]struct{})
 	for groupName := range usableGroups {
@@ -126,15 +125,31 @@ func collectTapnowModels(group string) []string {
 			if modelName == "" {
 				continue
 			}
-			modelSet[modelName] = struct{}{}
+			modelSet[strings.ToLower(modelName)] = struct{}{}
 		}
 	}
-	models := make([]string, 0, len(modelSet))
-	for modelName := range modelSet {
-		models = append(models, modelName)
+	return modelSet
+}
+
+func collectTapnowManagedModels(group string) []map[string]any {
+	configuredModels := setting.GetTapnowManagedModelsCopy()
+	if len(configuredModels) == 0 {
+		return nil
 	}
-	sort.Strings(models)
-	return models
+
+	enabledModelSet := collectTapnowEnabledModelSet(group)
+	filteredModels := make([]map[string]any, 0, len(configuredModels))
+	for _, modelConfig := range configuredModels {
+		modelID := strings.TrimSpace(fmt.Sprintf("%v", modelConfig["id"]))
+		if modelID == "" {
+			continue
+		}
+		if _, ok := enabledModelSet[strings.ToLower(modelID)]; !ok {
+			continue
+		}
+		filteredModels = append(filteredModels, modelConfig)
+	}
+	return filteredModels
 }
 
 func getRequestBaseURL(c *gin.Context) string {
@@ -180,9 +195,9 @@ func GetTapnowBootstrap(c *gin.Context) {
 	if !ok {
 		return
 	}
-	models := collectTapnowModels(user.Group)
+	models := collectTapnowManagedModels(user.Group)
 	if len(models) == 0 {
-		common.ApiErrorMsg(c, "当前账号暂无可用模型，请先在魔芯开放平台中为该分组配置模型")
+		common.ApiErrorMsg(c, "当前账号暂无可用模型，请先在系统设置中配置 Tapnow 托管模型，并确认该用户分组已开通这些模型")
 		return
 	}
 	tokenKey, err := getOrCreateTapnowTokenKey(user.Id)

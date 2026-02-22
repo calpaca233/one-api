@@ -57,5 +57,20 @@
   "阶梯计费已保存": "阶梯计费已保存",
   "创作工作台": "创作工作台",
   "Tapnow 创作工作台": "Tapnow 创作工作台",
-  "Tapnow Studio 云端创作入口": "Tapnow Studio 云端创作入口"
+  "Tapnow Studio 云端创作入口": "Tapnow Studio 云端创作入口",
+  "Tapnow 托管设置": "Tapnow 托管设置",
+  "请输入合法的 Tapnow 托管模型 JSON": "请输入合法的 Tapnow 托管模型 JSON",
+  "Tapnow 托管模型配置必须是 JSON 数组": "Tapnow 托管模型配置必须是 JSON 数组",
+  "第 {{index}} 个模型配置必须是对象": "第 {{index}} 个模型配置必须是对象",
+  "第 {{index}} 个模型缺少 id": "第 {{index}} 个模型缺少 id",
+  "模型 {{id}} 重复，请检查": "模型 {{id}} 重复，请检查",
+  "模型 {{id}} 的 type 仅支持 Chat/Image/Video": "模型 {{id}} 的 type 仅支持 Chat/Image/Video",
+  "模型 {{id}} 的 durations 必须是数组": "模型 {{id}} 的 durations 必须是数组",
+  "Tapnow 托管模型配置已保存": "Tapnow 托管模型配置已保存",
+  "配置 Tapnow 云端托管模式可调用模型。此配置由平台统一下发，用户侧不可编辑。": "配置 Tapnow 云端托管模式可调用模型。此配置由平台统一下发，用户侧不可编辑。",
+  "托管模型配置 JSON": "托管模型配置 JSON",
+  "请输入 Tapnow 托管模型 JSON": "请输入 Tapnow 托管模型 JSON",
+  "每个模型至少需要 id 字段，可选 type/provider/durations 及其他高级属性（如 ratioLimits、defaultRatio、videoResolutions、customParams 等）。": "每个模型至少需要 id 字段，可选 type/provider/durations 及其他高级属性（如 ratioLimits、defaultRatio、videoResolutions、customParams 等）。",
+  "示例配置": "示例配置",
+  "保存 Tapnow 托管模型配置": "保存 Tapnow 托管模型配置"
 }

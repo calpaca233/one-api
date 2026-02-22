@@ -2051,28 +2051,62 @@ const inferTapnowManagedDurations = (modelName = '') => {
     return ['5s', '10s'];
 };
 
-const buildTapnowManagedApiConfigs = (models = []) => {
-    const uniqueModels = Array.from(
-        new Set((Array.isArray(models) ? models : []).map((item) => String(item || '').trim()).filter(Boolean))
-    );
-    const source = uniqueModels.map((modelId) => ({ id: modelId }));
+const normalizeTapnowManagedType = (typeValue, modelID) => {
+    const raw = String(typeValue || '').trim().toLowerCase();
+    if (raw === 'chat' || raw === 'text' || raw === 'llm') return 'Chat';
+    if (raw === 'image' || raw === 'img') return 'Image';
+    if (raw === 'video' || raw === 'vid') return 'Video';
+    return inferTapnowManagedModelType(modelID);
+};
 
+const normalizeTapnowManagedDurations = (durations, modelID) => {
+    if (!Array.isArray(durations)) {
+        return inferTapnowManagedDurations(modelID);
+    }
+    const values = Array.from(
+        new Set(
+            durations
+                .map((item) => String(item || '').trim())
+                .filter(Boolean)
+                .map((value) => (/^\d+$/.test(value) ? `${value}s` : value)),
+        ),
+    );
+    return values.length > 0 ? values : inferTapnowManagedDurations(modelID);
+};
+
+const buildTapnowManagedApiConfigs = (models = []) => {
+    const source = Array.isArray(models) ? models : [];
     const stamp = Date.now();
-    return source.map((item, index) => {
-        const type = item.type || inferTapnowManagedModelType(item.id);
+    const seen = new Set();
+    const normalizedConfigs = [];
+    source.forEach((item, index) => {
+        if (item && typeof item === 'object' && !Array.isArray(item) && item.enabled === false) {
+            return;
+        }
+        const rawItem = item && typeof item === 'object' && !Array.isArray(item)
+            ? { ...item }
+            : { id: String(item || '').trim() };
+        const modelID = String(rawItem.id || '').trim();
+        if (!modelID) return;
+        const modelKey = modelID.toLowerCase();
+        if (seen.has(modelKey)) return;
+        seen.add(modelKey);
+        const type = normalizeTapnowManagedType(rawItem.type, modelID);
         const config = {
-            id: item.id,
+            ...rawItem,
+            id: modelID,
             provider: TAPNOW_MANAGED_PROVIDER_KEY,
             type,
             _uid: `managed-${stamp}-${index}-${Math.random().toString(36).slice(2, 8)}`
         };
         if (type === 'Video') {
-            config.durations = Array.isArray(item.durations) && item.durations.length > 0
-                ? item.durations
-                : inferTapnowManagedDurations(item.id);
+            config.durations = normalizeTapnowManagedDurations(rawItem.durations, modelID);
+        } else {
+            delete config.durations;
         }
-        return config;
+        normalizedConfigs.push(config);
     });
+    return normalizedConfigs;
 };
 
 const RATIOS = ['Auto', '1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'];
@@ -5606,7 +5640,7 @@ function TapnowApp() {
                 };
                 const managedApiConfigs = buildTapnowManagedApiConfigs(data.models);
                 if (managedApiConfigs.length === 0) {
-                    throw new Error('当前账号暂无可用模型，请先在魔芯开放平台为该账号分组配置模型');
+                    throw new Error(t('当前账号暂无可用模型，请先在魔芯开放平台设置 Tapnow 托管模型，并为当前分组开通对应模型'));
                 }
                 if (cancelled) return;
                 setProviders(managedProviders);
@@ -9296,9 +9330,9 @@ function TapnowApp() {
     const handleManagedMissingModel = useCallback((credentials, modelId) => {
         if (!isManagedMode || !credentials?.missingModel) return false;
         const modelText = String(modelId || credentials?.modelName || '').trim() || '当前模型';
-        showToast(`模型 ${modelText} 未在魔芯开放平台中开通，请联系管理员配置后再使用`, 'error', 5000);
+        showToast(t('模型 {{model}} 未在魔芯开放平台中开通，请联系管理员配置后再使用', { model: modelText }), 'error', 5000);
         return true;
-    }, [isManagedMode, showToast]);
+    }, [isManagedMode, showToast, t]);
 
     const buildProxyUrl = useCallback((targetUrl, providerKey) => {
         if (!targetUrl) return targetUrl;
@@ -10098,7 +10132,7 @@ function TapnowApp() {
     const runLocalSaveBatch = useCallback(async (node, mediaItems, options = {}) => {
         const silent = options.silent === true;
         if (isManagedMode) {
-            if (!silent) showToast('云端托管模式不支持本地保存服务', 'warning');
+            if (!silent) showToast(t('云端托管模式不支持本地保存服务'), 'warning');
             return;
         }
         const baseUrl = getLocalSaveBaseUrl(node);
@@ -10168,12 +10202,12 @@ function TapnowApp() {
             const skipSuffix = skippedCount > 0 ? `，已跳过 ${skippedCount} 个重复` : '';
             showToast(result.message || `已保存 ${successCount} 个文件${skipSuffix}`, 'success');
         }
-    }, [buildLocalSaveFiles, getFilenameFromUrl, getItemProxyPreference, getLocalSaveBaseUrl, showToast, isManagedMode]);
+    }, [buildLocalSaveFiles, getFilenameFromUrl, getItemProxyPreference, getLocalSaveBaseUrl, showToast, isManagedMode, t]);
 
     const testLocalSaveServer = useCallback(async (nodeId, rawUrl) => {
         if (isManagedMode) {
             updateNodeSettings(nodeId, { serverStatus: 'unsupported' });
-            showToast('云端托管模式不支持本地保存服务', 'warning');
+            showToast(t('云端托管模式不支持本地保存服务'), 'warning');
             return;
         }
         const baseUrl = (rawUrl || localServerUrl || '').trim().replace(/\/+$/, '');
@@ -10192,7 +10226,7 @@ function TapnowApp() {
         } catch (e) { }
         updateNodeSettings(nodeId, { serverStatus: 'disconnected' });
         showToast('本地服务连接失败', 'error');
-    }, [localServerUrl, showToast, updateNodeSettings, isManagedMode]);
+    }, [localServerUrl, showToast, updateNodeSettings, isManagedMode, t]);
 
     // V2.6.1 Feature: 自动保存功能 (local-save节点)
     const autoSaveProcessingRef = useRef(new Set());
@@ -19935,7 +19969,7 @@ function TapnowApp() {
     // --- 节点操作 ---
     const addNode = (type, worldX, worldY, sourceId, initialContent = undefined, initialDimensions = undefined, targetId = undefined, inputType = undefined) => {
         if (isManagedMode && type === 'local-save') {
-            showToast('云端托管模式已禁用“保存到本地”节点', 'warning', 3200);
+            showToast(t('云端托管模式已禁用“保存到本地”节点'), 'warning', 3200);
             return null;
         }
         saveToUndoStack(); // V3.4.6: 保存到撤销栈
@@ -27476,7 +27510,7 @@ ${inputText.substring(0, 15000)} ... (截断)
                                         </div>
                                     </div>
                                     <div className="flex-1 p-3 text-[11px] leading-5 text-zinc-500">
-                                        云端托管模式已禁用本地保存服务。请直接使用平台历史记录或下载功能管理产出文件。
+                                        {t('云端托管模式已禁用本地保存服务。请直接使用平台历史记录或下载功能管理产出文件。')}
                                     </div>
                                 </div>
                             );
@@ -34701,7 +34735,7 @@ ${inputText.substring(0, 15000)} ... (截断)
                                         />
                                         <p className={`text-[10px] mt-1 ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400'
                                             }`}>
-                                            {isManagedMode ? '云端托管模式下此地址由平台自动下发，不可手动修改' : '默认自动填充，可根据服务商要求修改路径'}
+                                            {isManagedMode ? t('云端托管模式下此地址由平台自动下发，不可手动修改') : t('默认自动填充，可根据服务商要求修改路径')}
                                         </p>
                                     </div>
 
