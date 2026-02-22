@@ -180,6 +180,11 @@ func GetTapnowBootstrap(c *gin.Context) {
 	if !ok {
 		return
 	}
+	models := collectTapnowModels(user.Group)
+	if len(models) == 0 {
+		common.ApiErrorMsg(c, "当前账号暂无可用模型，请先在魔芯开放平台中为该分组配置模型")
+		return
+	}
 	tokenKey, err := getOrCreateTapnowTokenKey(user.Id)
 	if err != nil {
 		common.ApiError(c, err)
@@ -191,7 +196,7 @@ func GetTapnowBootstrap(c *gin.Context) {
 		"api_key":         tokenKey,
 		"base_url":        getRequestBaseURL(c),
 		"user_center_url": "/console",
-		"models":          collectTapnowModels(user.Group),
+		"models":          models,
 	})
 }
 

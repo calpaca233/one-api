@@ -2055,9 +2055,7 @@ const buildTapnowManagedApiConfigs = (models = []) => {
     const uniqueModels = Array.from(
         new Set((Array.isArray(models) ? models : []).map((item) => String(item || '').trim()).filter(Boolean))
     );
-    const source = uniqueModels.length > 0
-        ? uniqueModels.map((modelId) => ({ id: modelId }))
-        : DEFAULT_API_CONFIGS.map((cfg) => ({ id: cfg.id, type: cfg.type, durations: cfg.durations }));
+    const source = uniqueModels.map((modelId) => ({ id: modelId }));
 
     const stamp = Date.now();
     return source.map((item, index) => {
@@ -5607,6 +5605,9 @@ function TapnowApp() {
                     }
                 };
                 const managedApiConfigs = buildTapnowManagedApiConfigs(data.models);
+                if (managedApiConfigs.length === 0) {
+                    throw new Error('当前账号暂无可用模型，请先在魔芯开放平台为该账号分组配置模型');
+                }
                 if (cancelled) return;
                 setProviders(managedProviders);
                 setApiConfigs(managedApiConfigs);
@@ -5852,6 +5853,27 @@ function TapnowApp() {
     const [localCacheBannerVisible, setLocalCacheBannerVisible] = useState(false);
     const localCacheBannerTimerRef = useRef(null);
     const localCacheActive = localCacheEnabled && localCacheServerConnected;
+    useEffect(() => {
+        if (!isManagedMode) return;
+        setLocalCacheEnabled(false);
+        setLocalCacheServerConnected(false);
+        setCacheRedownloadOnEnable(false);
+        setLocalCacheBannerVisible(false);
+    }, [isManagedMode]);
+    useEffect(() => {
+        if (!isManagedMode) return;
+        setNodes(prev => prev.map((node) => {
+            if (node.type !== 'local-save') return node;
+            return {
+                ...node,
+                settings: {
+                    ...(node.settings || {}),
+                    autoSave: false,
+                    serverStatus: 'unsupported'
+                }
+            };
+        }));
+    }, [isManagedMode]);
     const [localServerConfig, setLocalServerConfig] = useState({
         savePath: '',
         imageSavePath: '',
@@ -6564,6 +6586,10 @@ function TapnowApp() {
 
     // V2.6.1 Feature: 本地缓存服务器连接检查
     useEffect(() => {
+        if (isManagedMode) {
+            setLocalCacheServerConnected(false);
+            return;
+        }
         if (!localCacheEnabled) {
             setLocalCacheServerConnected(false);
             return;
@@ -6606,9 +6632,13 @@ function TapnowApp() {
             cancelled = true;
             clearInterval(interval);
         };
-    }, [localServerUrl, localCacheEnabled]);
+    }, [localServerUrl, localCacheEnabled, isManagedMode]);
 
     useEffect(() => {
+        if (isManagedMode) {
+            setLocalCacheBannerVisible(false);
+            return;
+        }
         if (localCacheBannerTimerRef.current) {
             clearTimeout(localCacheBannerTimerRef.current);
             localCacheBannerTimerRef.current = null;
@@ -6632,10 +6662,11 @@ function TapnowApp() {
                 localCacheBannerTimerRef.current = null;
             }
         };
-    }, [localCacheEnabled, localCacheServerConnected]);
+    }, [localCacheEnabled, localCacheServerConnected, isManagedMode]);
 
     // V2.6.1 Feature: 同步 local-save 节点连接状态
     useEffect(() => {
+        if (isManagedMode) return;
         setNodes(prev => prev.map(n => {
             if (n.type !== 'local-save') return n;
             if (n.settings?.serverUrl) return n;
@@ -6643,7 +6674,7 @@ function TapnowApp() {
             if (n.settings?.serverStatus === nextStatus) return n;
             return { ...n, settings: { ...n.settings, serverStatus: nextStatus } };
         }));
-    }, [localCacheServerConnected]);
+    }, [localCacheServerConnected, isManagedMode]);
 
     // V2.6.1 Feature: 本地缓存与缩略图辅助函数
     const sanitizeCacheId = useCallback((value) => {
@@ -9220,6 +9251,18 @@ function TapnowApp() {
     const getApiCredentials = useCallback((modelId) => {
         const config = getApiConfigByKey(modelId);
         if (!config) {
+            if (isManagedMode) {
+                return {
+                    key: '',
+                    url: (window.location.origin || DEFAULT_BASE_URL).replace(/\/+$/, ''),
+                    modelName: modelId,
+                    displayName: modelId,
+                    apiType: 'openai',
+                    useProxy: false,
+                    forceAsync: false,
+                    missingModel: true
+                };
+            }
             return {
                 key: globalApiKey,
                 url: DEFAULT_BASE_URL.replace(/\/+$/, ''),
@@ -9248,7 +9291,14 @@ function TapnowApp() {
             useProxy: !!provider?.useProxy,
             forceAsync: !!provider?.forceAsync
         };
-    }, [getApiConfigByKey, providers, globalApiKey]);
+    }, [getApiConfigByKey, providers, globalApiKey, isManagedMode]);
+
+    const handleManagedMissingModel = useCallback((credentials, modelId) => {
+        if (!isManagedMode || !credentials?.missingModel) return false;
+        const modelText = String(modelId || credentials?.modelName || '').trim() || '当前模型';
+        showToast(`模型 ${modelText} 未在魔芯开放平台中开通，请联系管理员配置后再使用`, 'error', 5000);
+        return true;
+    }, [isManagedMode, showToast]);
 
     const buildProxyUrl = useCallback((targetUrl, providerKey) => {
         if (!targetUrl) return targetUrl;
@@ -10047,6 +10097,10 @@ function TapnowApp() {
 
     const runLocalSaveBatch = useCallback(async (node, mediaItems, options = {}) => {
         const silent = options.silent === true;
+        if (isManagedMode) {
+            if (!silent) showToast('云端托管模式不支持本地保存服务', 'warning');
+            return;
+        }
         const baseUrl = getLocalSaveBaseUrl(node);
         if (!baseUrl) {
             if (!silent) showToast('本地服务地址为空', 'error');
@@ -10114,9 +10168,14 @@ function TapnowApp() {
             const skipSuffix = skippedCount > 0 ? `，已跳过 ${skippedCount} 个重复` : '';
             showToast(result.message || `已保存 ${successCount} 个文件${skipSuffix}`, 'success');
         }
-    }, [buildLocalSaveFiles, getFilenameFromUrl, getItemProxyPreference, getLocalSaveBaseUrl, showToast]);
+    }, [buildLocalSaveFiles, getFilenameFromUrl, getItemProxyPreference, getLocalSaveBaseUrl, showToast, isManagedMode]);
 
     const testLocalSaveServer = useCallback(async (nodeId, rawUrl) => {
+        if (isManagedMode) {
+            updateNodeSettings(nodeId, { serverStatus: 'unsupported' });
+            showToast('云端托管模式不支持本地保存服务', 'warning');
+            return;
+        }
         const baseUrl = (rawUrl || localServerUrl || '').trim().replace(/\/+$/, '');
         if (!baseUrl) {
             showToast('请输入本地服务地址', 'warning');
@@ -10133,11 +10192,12 @@ function TapnowApp() {
         } catch (e) { }
         updateNodeSettings(nodeId, { serverStatus: 'disconnected' });
         showToast('本地服务连接失败', 'error');
-    }, [localServerUrl, showToast, updateNodeSettings]);
+    }, [localServerUrl, showToast, updateNodeSettings, isManagedMode]);
 
     // V2.6.1 Feature: 自动保存功能 (local-save节点)
     const autoSaveProcessingRef = useRef(new Set());
     useEffect(() => {
+        if (isManagedMode) return;
         const localSaveNodes = nodes.filter(n => n.type === 'local-save' && n.settings?.autoSave);
         if (localSaveNodes.length === 0) return;
 
@@ -10174,7 +10234,7 @@ function TapnowApp() {
                 }
             }, 1000);
         });
-    }, [nodes, history, getLocalSaveMediaItems, runLocalSaveBatch, getLocalSaveBaseUrl, getFilenameFromUrl]);
+    }, [nodes, history, getLocalSaveMediaItems, runLocalSaveBatch, getLocalSaveBaseUrl, getFilenameFromUrl, isManagedMode]);
 
     const handleChatResizeStart = (e) => { e.preventDefault(); setIsResizingChat(true); };
     const [isResizingChat, setIsResizingChat] = useState(false);
@@ -12030,9 +12090,13 @@ function TapnowApp() {
 
         // V3.4.8: 使用 getApiCredentials 获取 Provider 配置
         const config = getApiConfigByKey(chatModel);
-        const { key: apiKey, url: baseUrl, modelName } = getApiCredentials(chatModel);
+        const credentials = getApiCredentials(chatModel);
+        const { key: apiKey, url: baseUrl, modelName } = credentials;
 
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, chatModel)) {
+                return;
+            }
             alert(t('请先在 API 设置中配置 Key'));
             setSettingsOpen(true);
             return;
@@ -15656,7 +15720,12 @@ function TapnowApp() {
             }
         }
 
-        if (!apiKey) { alert(t('请先在设置中配置 API Key')); setSettingsOpen(true); return; }
+        if (!apiKey) {
+            if (handleManagedMissingModel(credentials, modelId)) return;
+            alert(t('请先在设置中配置 API Key'));
+            setSettingsOpen(true);
+            return;
+        }
 
         // 规范化 prompt（确保角色引用 @{username} 前后有空格，仅对 Sora 2 模型）
         if (prompt && (modelId.includes('sora') || modelId === 'sora-2' || modelId === 'sora-2-pro')) {
@@ -19392,7 +19461,9 @@ function TapnowApp() {
                 }
 
                 let localFiles = [];
-                const baseUrl = (localServerUrl || 'http://127.0.0.1:9527').replace(/\/+$/, '');
+                const baseUrl = isManagedMode
+                    ? ''
+                    : (localServerUrl || 'http://127.0.0.1:9527').replace(/\/+$/, '');
                 try {
                     if (baseUrl) {
                         const localFilesRes = await fetch(`${baseUrl}/list-files`);
@@ -19641,7 +19712,9 @@ function TapnowApp() {
 
             // --- 尝试获取本地库文件列表（用于优先使用本地文件）---
             let localFiles = [];
-            const localBaseUrl = (localServerUrl || 'http://127.0.0.1:9527').replace(/\/+$/, '');
+            const localBaseUrl = isManagedMode
+                ? ''
+                : (localServerUrl || 'http://127.0.0.1:9527').replace(/\/+$/, '');
             try {
                 if (localBaseUrl) {
                     const localFilesRes = await fetch(`${localBaseUrl}/list-files`);
@@ -19861,6 +19934,10 @@ function TapnowApp() {
 
     // --- 节点操作 ---
     const addNode = (type, worldX, worldY, sourceId, initialContent = undefined, initialDimensions = undefined, targetId = undefined, inputType = undefined) => {
+        if (isManagedMode && type === 'local-save') {
+            showToast('云端托管模式已禁用“保存到本地”节点', 'warning', 3200);
+            return null;
+        }
         saveToUndoStack(); // V3.4.6: 保存到撤销栈
         const defaultSize = type === 'gen-video'
             ? { w: 400, h: 500 }
@@ -20696,8 +20773,10 @@ function TapnowApp() {
             shouldAppend = !overwrite;
         }
 
-        const { key: apiKey, url: baseUrl } = getApiCredentials(chatModel);
+        const credentials = getApiCredentials(chatModel);
+        const { key: apiKey, url: baseUrl } = credentials;
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, chatModel)) return;
             updateNodeSettings(nodeId, { errorMsg: '请配置 Chat 模型 Key' });
             return;
         }
@@ -20874,8 +20953,10 @@ function TapnowApp() {
             return;
         }
 
-        const { key: apiKey, url: baseUrl } = getApiCredentials(chatModel);
+        const credentials = getApiCredentials(chatModel);
+        const { key: apiKey, url: baseUrl } = credentials;
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, chatModel)) return;
             updateNodeSettings(nodeId, { errorMsg: '请配置 Chat 模型 Key' });
             return;
         }
@@ -21746,6 +21827,10 @@ function TapnowApp() {
             const apiKey = credentials.key;
 
             if (!apiKey) {
+                if (handleManagedMissingModel(credentials, soraConfig.id)) {
+                    setCreateCharacterSubmitting(false);
+                    return;
+                }
                 alert(t('请先配置 API Key'));
                 setCreateCharacterSubmitting(false);
                 return;
@@ -21765,7 +21850,7 @@ function TapnowApp() {
                 endpoint = customEndpoint.trim();
             } else {
                 // 如果没有提供，使用默认路径
-                const baseUrl = (soraConfig.url || DEFAULT_BASE_URL).replace(/\/+$/, '');
+                const baseUrl = (credentials.url || DEFAULT_BASE_URL).replace(/\/+$/, '');
                 endpoint = `${baseUrl}/sora/v1/characters`;
             }
 
@@ -22070,6 +22155,7 @@ function TapnowApp() {
         const apiKey = credentials.key;
         const baseUrl = credentials.url;
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, mjConfig.id)) return;
             alert(t('请先配置 Midjourney API Key'));
             setSettingsOpen(true);
             return;
@@ -22291,6 +22377,7 @@ function TapnowApp() {
         const credentials = getApiCredentials(modelId);
         const apiKey = credentials.key;
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, modelId)) return;
             showToast('请先在设置中配置 API Key', 'error');
             setSettingsOpen(true);
             return;
@@ -22519,11 +22606,13 @@ ${inputText.substring(0, 15000)} ... (截断)
 
         const modelId = resolveModelKey(node.settings?.model || 'gemini-3-pro');
         // V3.4.8: 使用 getApiCredentials 获取 Provider 配置
-        const { key: apiKey, url: baseUrl } = getApiCredentials(modelId);
+        const credentials = getApiCredentials(modelId);
+        const { key: apiKey, url: baseUrl } = credentials;
         // V3.4.13: 获取完整config用于历史记录显示
         const config = getApiConfigByKey(modelId);
 
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, modelId)) return;
             alert(t('请先在 API 设置中配置 Key'));
             setSettingsOpen(true);
             return;
@@ -22851,9 +22940,11 @@ ${inputText.substring(0, 15000)} ... (截断)
         }
 
         // V3.4.8: 使用 getApiCredentials 获取 Provider 配置
-        const { key: apiKey, url: baseUrl } = getApiCredentials(config?.id || 'gemini-3-pro');
+        const credentials = getApiCredentials(config?.id || 'gemini-3-pro');
+        const { key: apiKey, url: baseUrl } = credentials;
 
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, config?.id || 'gemini-3-pro')) return;
             alert(t('请先在 API 设置中配置 Key'));
             setSettingsOpen(true);
             return;
@@ -24009,9 +24100,11 @@ ${inputText.substring(0, 15000)} ... (截断)
 
         const modelId = node.settings?.model || 'gemini-3-pro';
         // V3.4.8: 使用 getApiCredentials 获取 Provider 配置
-        const { key: apiKey, url: baseUrl } = getApiCredentials(modelId);
+        const credentials = getApiCredentials(modelId);
+        const { key: apiKey, url: baseUrl } = credentials;
 
         if (!apiKey) {
+            if (handleManagedMissingModel(credentials, modelId)) return;
             alert(t('请先在 API 设置中配置 Key'));
             setSettingsOpen(true);
             return;
@@ -27277,6 +27370,10 @@ ${inputText.substring(0, 15000)} ... (截断)
                                                         const credentials = getApiCredentials(soraConfig.id);
                                                         const apiKey = credentials.key;
                                                         if (!apiKey) {
+                                                            if (handleManagedMissingModel(credentials, soraConfig.id)) {
+                                                                updateNodeSettings(node.id, { isCreating: false, createError: '当前账号未开通该模型' });
+                                                                return;
+                                                            }
                                                             updateNodeSettings(node.id, { isCreating: false, createError: '请先配置 API Key' });
                                                             alert(t('请先配置 API Key'));
                                                             setSettingsOpen(true);
@@ -27368,6 +27465,22 @@ ${inputText.substring(0, 15000)} ... (截断)
                         const serverConnected = serverUrlOverride
                             ? node.settings?.serverStatus === 'connected'
                             : localCacheServerConnected;
+
+                        if (isManagedMode) {
+                            return (
+                                <div className={`relative w-full h-full flex flex-col transition-colors pointer-events-auto ${theme === 'dark' ? 'bg-zinc-900/80' : theme === 'solarized' ? 'bg-[#fdf6e3]' : 'bg-zinc-100'}`}>
+                                    <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                            <HardDrive size={12} className="text-amber-500" />
+                                            <span>{t('保存到本地')}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 p-3 text-[11px] leading-5 text-zinc-500">
+                                        云端托管模式已禁用本地保存服务。请直接使用平台历史记录或下载功能管理产出文件。
+                                    </div>
+                                </div>
+                            );
+                        }
 
                         return (
                             <div className={`relative w-full h-full flex flex-col transition-colors pointer-events-auto ${theme === 'dark' ? 'bg-zinc-900/80' : theme === 'solarized' ? 'bg-[#fdf6e3]' : 'bg-zinc-100'}`}>
@@ -34256,7 +34369,8 @@ ${inputText.substring(0, 15000)} ... (截断)
                                             // 自动计算默认 endpoint
                                             const soraConfig = apiConfigs.find(c => c.type === 'Video' && (c.id === 'sora-2' || c.id === 'sora-2-pro'));
                                             if (soraConfig) {
-                                                const baseUrl = (soraConfig.url || DEFAULT_BASE_URL).replace(/\/+$/, '');
+                                                const credentials = getApiCredentials(soraConfig.id);
+                                                const baseUrl = (credentials.url || DEFAULT_BASE_URL).replace(/\/+$/, '');
                                                 setCreateCharacterEndpoint(`${baseUrl}/sora/v1/characters`);
                                             } else {
                                                 const baseUrl = DEFAULT_BASE_URL.replace(/\/+$/, '');
@@ -34577,7 +34691,7 @@ ${inputText.substring(0, 15000)} ... (截断)
                                                 if (!e.target.value) {
                                                     const soraConfig = apiConfigs.find(c => c.type === 'Video' && (c.id === 'sora-2' || c.id === 'sora-2-pro'));
                                                     const baseUrl = soraConfig
-                                                        ? (soraConfig.url || DEFAULT_BASE_URL).replace(/\/+$/, '')
+                                                        ? (getApiCredentials(soraConfig.id).url || DEFAULT_BASE_URL).replace(/\/+$/, '')
                                                         : DEFAULT_BASE_URL.replace(/\/+$/, '');
                                                     setCreateCharacterEndpoint(`${baseUrl}/sora/v1/characters`);
                                                 }
@@ -35205,7 +35319,9 @@ ${inputText.substring(0, 15000)} ... (截断)
                                         { type: 'image-compare', label: t('图像对比') },
                                         { type: 'preview', label: t('预览窗口') },
                                         { type: 'local-save', label: t('保存到本地') }
-                                    ].map(item => (
+                                    ]
+                                        .filter((item) => !(isManagedMode && item.type === 'local-save'))
+                                        .map(item => (
                                         <div key={item.type}>
                                             {item.children ? (
                                                 <div className="relative">
