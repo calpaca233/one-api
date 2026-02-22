@@ -21846,7 +21846,7 @@ function TapnowApp() {
             // 2. 使用用户提供的 endpoint 或自动构造
             const timestamps = `${startSecond},${endSecond} `;
             let endpoint;
-            if (customEndpoint && customEndpoint.trim()) {
+            if (!isManagedMode && customEndpoint && customEndpoint.trim()) {
                 endpoint = customEndpoint.trim();
             } else {
                 // 如果没有提供，使用默认路径
@@ -34686,7 +34686,9 @@ ${inputText.substring(0, 15000)} ... (截断)
                                                 ? 'bg-zinc-900 border-zinc-700 text-zinc-200 placeholder-zinc-600'
                                                 : theme === 'solarized' ? 'bg-[#fdf6e3] border-[#eee8d5] text-zinc-800 placeholder-zinc-400' : 'bg-white border-zinc-300 text-zinc-800 placeholder-zinc-400'
                                                 }`}
+                                            disabled={isManagedMode}
                                             onFocus={(e) => {
+                                                if (isManagedMode) return;
                                                 // 如果为空，自动填充默认值
                                                 if (!e.target.value) {
                                                     const soraConfig = apiConfigs.find(c => c.type === 'Video' && (c.id === 'sora-2' || c.id === 'sora-2-pro'));
@@ -34699,7 +34701,7 @@ ${inputText.substring(0, 15000)} ... (截断)
                                         />
                                         <p className={`text-[10px] mt-1 ${theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400'
                                             }`}>
-                                            默认自动填充，可根据服务商要求修改路径
+                                            {isManagedMode ? '云端托管模式下此地址由平台自动下发，不可手动修改' : '默认自动填充，可根据服务商要求修改路径'}
                                         </p>
                                     </div>
 
