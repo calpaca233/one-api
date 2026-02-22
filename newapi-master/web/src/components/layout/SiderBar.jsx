@@ -27,6 +27,7 @@ const routerMap = {
   detail: '/console',
   pricing: '/pricing',
   task: '/console/task',
+  tapnow: '/console/tapnow',
   models: '/console/models',
   playground: '/console/playground',
   personal: '/console/personal',
@@ -66,6 +67,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('令牌管理'),
         itemKey: 'token',
         to: '/token',
+      },
+      {
+        text: t('创作工作台'),
+        itemKey: 'tapnow',
+        to: '/tapnow',
       },
     //   {
     //     text: t('使用日志'),

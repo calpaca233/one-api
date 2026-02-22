@@ -25,6 +25,7 @@ export default function SettingsHeaderNavModules(props) {
   const [headerNavModules, setHeaderNavModules] = useState({
     home: true,
     console: true,
+    tapnow: true,
     pricing: {
       enabled: true,
       requireAuth: false, // 默认不需要登录鉴权
@@ -65,6 +66,7 @@ export default function SettingsHeaderNavModules(props) {
     const defaultModules = {
       home: true,
       console: true,
+      tapnow: true,
       pricing: {
         enabled: true,
         requireAuth: false,
@@ -124,6 +126,9 @@ export default function SettingsHeaderNavModules(props) {
             requireAuth: false, // 默认不需要登录鉴权
           };
         }
+        if (modules.tapnow === undefined) {
+          modules.tapnow = true;
+        }
 
         setHeaderNavModules(modules);
       } catch (error) {
@@ -131,6 +136,7 @@ export default function SettingsHeaderNavModules(props) {
         const defaultModules = {
           home: true,
           console: true,
+          tapnow: true,
           pricing: {
             enabled: true,
             requireAuth: false,
@@ -154,6 +160,11 @@ export default function SettingsHeaderNavModules(props) {
       key: 'console',
       title: t('控制台'),
       description: t('用户控制面板，管理账户'),
+    },
+    {
+      key: 'tapnow',
+      title: t('创作工作台'),
+      description: t('Tapnow Studio 云端创作入口'),
     },
     {
       key: 'pricing',

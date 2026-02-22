@@ -1968,6 +1968,8 @@ const VIDEO_TASK_TIMEOUT_MS = 5 * 60 * 1000;
 
 // --- 默认配置 ---
 const DEFAULT_BASE_URL = 'https://ai.comfly.chat';
+const TAPNOW_BOOTSTRAP_ENDPOINT = '/api/tapnow/bootstrap';
+const TAPNOW_MANAGED_PROVIDER_KEY = 'magicore';
 
 // 即梦API配置（代理地址，默认本地5100端口）
 const JIMENG_API_BASE_URL = 'http://localhost:5100';
@@ -2021,6 +2023,59 @@ const DEFAULT_API_CONFIGS = [
     { id: 'jimeng-video-2.0', provider: 'jimeng', type: 'Video', durations: ['5s', '10s'] },
     { id: 'grok-video-3', provider: 'grok', type: 'Video', durations: ['8s', '5s'] },
 ];
+
+const TAPNOW_VIDEO_MODEL_HINTS = [
+    'video', 'sora', 'veo', 'kling', 'wan', 'runway', 'pika', 'hunyuan', 'luma'
+];
+const TAPNOW_IMAGE_MODEL_HINTS = [
+    'image', 'img', 'midjourney', 'mj', 'nano', 'jimeng', 'dall', 'sd', 'flux', 'seedream', 'kolors', 'recraft', 'ideogram'
+];
+
+const inferTapnowManagedModelType = (modelName = '') => {
+    const normalized = String(modelName || '').trim().toLowerCase();
+    if (!normalized) return 'Chat';
+    if (TAPNOW_VIDEO_MODEL_HINTS.some((keyword) => normalized.includes(keyword))) {
+        return 'Video';
+    }
+    if (TAPNOW_IMAGE_MODEL_HINTS.some((keyword) => normalized.includes(keyword))) {
+        return 'Image';
+    }
+    return 'Chat';
+};
+
+const inferTapnowManagedDurations = (modelName = '') => {
+    const normalized = String(modelName || '').toLowerCase();
+    if (normalized.includes('sora-2-pro')) return ['15s', '25s'];
+    if (normalized.includes('sora-2')) return ['5s', '10s'];
+    if (normalized.includes('veo') || normalized.includes('kling')) return ['8s'];
+    return ['5s', '10s'];
+};
+
+const buildTapnowManagedApiConfigs = (models = []) => {
+    const uniqueModels = Array.from(
+        new Set((Array.isArray(models) ? models : []).map((item) => String(item || '').trim()).filter(Boolean))
+    );
+    const source = uniqueModels.length > 0
+        ? uniqueModels.map((modelId) => ({ id: modelId }))
+        : DEFAULT_API_CONFIGS.map((cfg) => ({ id: cfg.id, type: cfg.type, durations: cfg.durations }));
+
+    const stamp = Date.now();
+    return source.map((item, index) => {
+        const type = item.type || inferTapnowManagedModelType(item.id);
+        const config = {
+            id: item.id,
+            provider: TAPNOW_MANAGED_PROVIDER_KEY,
+            type,
+            _uid: `managed-${stamp}-${index}-${Math.random().toString(36).slice(2, 8)}`
+        };
+        if (type === 'Video') {
+            config.durations = Array.isArray(item.durations) && item.durations.length > 0
+                ? item.durations
+                : inferTapnowManagedDurations(item.id);
+        }
+        return config;
+    });
+};
 
 const RATIOS = ['Auto', '1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'];
 const GROK_VIDEO_RATIOS = ['3:2', '2:3', '1:1'];
@@ -4699,6 +4754,13 @@ function TapnowApp() {
         }
     });
     const [language, setLanguage] = useState('zh');
+    const [managedBootstrap, setManagedBootstrap] = useState({
+        loading: true,
+        error: '',
+        data: null
+    });
+    const isManagedMode = managedBootstrap?.data?.managed === true;
+    const userCenterUrl = managedBootstrap?.data?.user_center_url || '/console';
 
     useEffect(() => {
         if (i18n.language !== language) {
@@ -5486,12 +5548,13 @@ function TapnowApp() {
 
     // V3.3: 持久化 providers
     useEffect(() => {
+        if (managedBootstrap.loading || isManagedMode) return;
         try {
             localStorage.setItem('tapnow_providers', JSON.stringify(providers));
         } catch (e) {
             console.error('保存 providers 配置失败:', e);
         }
-    }, [providers]);
+    }, [providers, managedBootstrap.loading, isManagedMode]);
 
     // V3.6.0: 辅助函数 - 获取模型的 key 和 url
     const getModelConfig = useCallback((modelId) => {
@@ -5509,6 +5572,67 @@ function TapnowApp() {
     }, [apiConfigs, providers]);
 
     const [globalApiKey, setGlobalApiKey] = useState(() => localStorage.getItem('tapnow_global_key') || '');
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadManagedBootstrap = async () => {
+            try {
+                const response = await fetch(TAPNOW_BOOTSTRAP_ENDPOINT, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                let payload = null;
+                try {
+                    payload = await response.json();
+                } catch (err) {
+                    payload = null;
+                }
+                if (!response.ok || !payload?.success || !payload?.data?.api_key) {
+                    throw new Error(payload?.message || '无法从魔芯开放平台获取托管配置');
+                }
+                const data = payload.data || {};
+                const managedApiKey = String(data.api_key || '').trim();
+                if (!managedApiKey) {
+                    throw new Error('账号下未找到可用令牌');
+                }
+                const managedBaseUrl = String(data.base_url || window.location.origin || '').trim().replace(/\/+$/, '');
+                const managedProviders = {
+                    [TAPNOW_MANAGED_PROVIDER_KEY]: {
+                        key: managedApiKey,
+                        url: managedBaseUrl || window.location.origin,
+                        apiType: 'openai',
+                        useProxy: false,
+                        forceAsync: false,
+                        enabled: true
+                    }
+                };
+                const managedApiConfigs = buildTapnowManagedApiConfigs(data.models);
+                if (cancelled) return;
+                setProviders(managedProviders);
+                setApiConfigs(managedApiConfigs);
+                setGlobalApiKey(managedApiKey);
+                setManagedBootstrap({
+                    loading: false,
+                    error: '',
+                    data: {
+                        ...data,
+                        managed: true
+                    }
+                });
+            } catch (err) {
+                if (cancelled) return;
+                setManagedBootstrap({
+                    loading: false,
+                    error: err?.message || '连接魔芯开放平台失败',
+                    data: null
+                });
+            }
+        };
+        loadManagedBootstrap();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // API 黑名单机制 (比照 Jimeng-api-tool 实现)
     const [apiBlacklist, setApiBlacklist] = useState(() => {
@@ -8343,9 +8467,10 @@ function TapnowApp() {
     const lastZoomRef = useRef(null); // 跟踪上次的 zoom 值，用于检测缩放切换
 
     useEffect(() => {
+        if (managedBootstrap.loading || isManagedMode) return;
         // 保存配置到 localStorage（不再过滤任何模型）
         localStorage.setItem('tapnow_api_configs', JSON.stringify(apiConfigs));
-    }, [apiConfigs]);
+    }, [apiConfigs, managedBootstrap.loading, isManagedMode]);
 
     // --- MOVED HELPERS to fix ReferenceError ---
     const deleteNode = useCallback((id) => {
@@ -8821,7 +8946,10 @@ function TapnowApp() {
         localStorage.setItem('tapnow_global_key', key);
     }, 1000), []);
 
-    useEffect(() => { debouncedSaveGlobalKey(globalApiKey); }, [globalApiKey, debouncedSaveGlobalKey]);
+    useEffect(() => {
+        if (managedBootstrap.loading || isManagedMode) return;
+        debouncedSaveGlobalKey(globalApiKey);
+    }, [globalApiKey, debouncedSaveGlobalKey, managedBootstrap.loading, isManagedMode]);
 
     // 优化localStorage存储，处理配额超限问题
     useEffect(() => {
@@ -32891,6 +33019,48 @@ ${inputText.substring(0, 15000)} ... (截断)
     // 交互模式：正在拖拽或缩放时启用
     const isInteracting = isDragging || isPanning;
 
+    if (managedBootstrap.loading) {
+        return (
+            <div className="w-full h-screen flex items-center justify-center bg-zinc-950 text-zinc-200">
+                <div className="text-center space-y-3">
+                    <div className="text-sm tracking-wide">{t('正在连接魔芯开放平台...')}</div>
+                    <div className="text-xs text-zinc-500">{t('正在从云端同步你的模型与令牌配置')}</div>
+                </div>
+            </div>
+        );
+    }
+
+    if (managedBootstrap.error) {
+        return (
+            <div className="w-full h-screen flex items-center justify-center bg-zinc-950 text-zinc-200 px-4">
+                <div className="max-w-xl w-full rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 space-y-4">
+                    <div className="text-lg font-semibold">{t('连接魔芯开放平台失败')}</div>
+                    <div className="text-sm text-zinc-400">{managedBootstrap.error}</div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-500"
+                        >
+                            {t('重试')}
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (window.top && window.top !== window) {
+                                    window.top.location.href = userCenterUrl;
+                                } else {
+                                    window.location.href = userCenterUrl;
+                                }
+                            }}
+                            className="px-3 py-1.5 rounded border border-zinc-700 text-zinc-200 text-sm hover:bg-zinc-800"
+                        >
+                            {t('返回用户中心')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             {/* 极简艺术进度条 */}
@@ -33125,11 +33295,21 @@ ${inputText.substring(0, 15000)} ... (截断)
                         </Button>
                         <Button
                             variant="secondary"
-                            icon={Settings}
-                            onClick={() => setSettingsOpen(true)}
+                            icon={isManagedMode ? User : Settings}
+                            onClick={() => {
+                                if (isManagedMode) {
+                                    if (window.top && window.top !== window) {
+                                        window.top.location.href = userCenterUrl;
+                                    } else {
+                                        window.location.href = userCenterUrl;
+                                    }
+                                    return;
+                                }
+                                setSettingsOpen(true);
+                            }}
                             className={theme === 'solarized' ? '!bg-[#616161] !border-[#525252] !text-[#fdf6e3] hover:!bg-[#555555]' : ''}
                         >
-                            {t('API 设置')}
+                            {isManagedMode ? t('用户中心') : t('API 设置')}
                         </Button>
                     </div>
                 </div>
@@ -35653,7 +35833,7 @@ ${inputText.substring(0, 15000)} ... (截断)
                             }}
                         />
 
-                        <Modal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} title={t('模型接口配置')} theme={theme}>
+                        <Modal isOpen={settingsOpen && !isManagedMode} onClose={() => setSettingsOpen(false)} title={t('模型接口配置')} theme={theme}>
                             <div className="px-4 pt-3">
                                 <div className={`inline-flex rounded-md border ${theme === 'dark'
                                     ? 'border-zinc-800 bg-[#18181b]'

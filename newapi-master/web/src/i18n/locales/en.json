@@ -2139,5 +2139,8 @@
   "模型 {{model}} 第 {{index}} 条规则中的输入倍率必须大于 0": "Input ratio in rule #{{index}} for model {{model}} must be greater than 0",
   "模型 {{model}} 第 {{index}} 条规则中的输出倍率不能小于 0": "Output ratio in rule #{{index}} for model {{model}} must be greater than or equal to 0",
   "模型 {{model}} 的区间上限必须严格递增": "Tier upper bounds for model {{model}} must be strictly increasing",
-  "阶梯计费已保存": "Tiered billing has been saved"
+  "阶梯计费已保存": "Tiered billing has been saved",
+  "创作工作台": "Creative Studio",
+  "Tapnow 创作工作台": "Tapnow Creative Studio",
+  "Tapnow Studio 云端创作入口": "Tapnow Studio cloud entry"
 }

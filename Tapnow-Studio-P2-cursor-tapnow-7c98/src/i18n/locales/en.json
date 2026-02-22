@@ -731,5 +731,10 @@
     "黑名单 = 积分耗尽，暂停 = 临时错误 (60分钟后自动恢复) ，熔断 = 短时大量1006错误保护": "Blacklist = Credits depleted, Paused = Temporary error (auto-resume after 60 mins), Circuit Brk = Short-term 1006 error protection",
     "黑名单 = 积分耗尽，暂停 = 临时错误（60分钟后自动恢复），熔断 = 短时大量1006错误保护": "Blacklist = Credits depleted, Paused = Temporary error (60m auto-resume), Circuit Breaker = Short-term 1006 protection",
     "黑名单已清空": "Blacklist cleared",
-    "默认使用 history": "Default use history"
+    "默认使用 history": "Default use history",
+    "正在连接魔芯开放平台...": "Connecting to Magicore Open Platform...",
+    "正在从云端同步你的模型与令牌配置": "Syncing your models and tokens from cloud...",
+    "连接魔芯开放平台失败": "Failed to connect to Magicore Open Platform",
+    "返回用户中心": "Back to user center",
+    "用户中心": "User Center"
 }
