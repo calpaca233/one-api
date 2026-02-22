@@ -278,6 +278,9 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 	completionTokens := usage.CompletionTokens
 	modelName := relayInfo.OriginModelName
 	tierInputTokens := promptTokens
+	if tierInputTokens <= 0 {
+		tierInputTokens = relayInfo.PromptTokens
+	}
 
 	tokenName := ctx.GetString("token_name")
 	completionRatio := relayInfo.PriceData.CompletionRatio
@@ -430,6 +433,9 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 	modelPrice := relayInfo.PriceData.ModelPrice
 	usePrice := relayInfo.PriceData.UsePrice
 	tierInputTokens := usage.PromptTokens
+	if tierInputTokens <= 0 {
+		tierInputTokens = relayInfo.PromptTokens
+	}
 	var tieredRule *ratio_setting.TieredModelRatioRule
 	if !usePrice {
 		modelRatio, completionRatio, tieredRule = resolveTieredModelRatios(relayInfo.OriginModelName, tierInputTokens, modelRatio, completionRatio)

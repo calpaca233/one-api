@@ -208,9 +208,13 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	groupRatio := relayInfo.PriceData.GroupRatioInfo.GroupRatio
 	modelPrice := relayInfo.PriceData.ModelPrice
 	cachedCreationRatio := relayInfo.PriceData.CacheCreationRatio
+	tierInputTokens := promptTokens
+	if tierInputTokens <= 0 {
+		tierInputTokens = relayInfo.PromptTokens
+	}
 	var tieredRule *ratio_setting.TieredModelRatioRule
 	if !relayInfo.PriceData.UsePrice {
-		if matchedRule, ok := ratio_setting.MatchTieredModelRatio(modelName, promptTokens); ok {
+		if matchedRule, ok := ratio_setting.MatchTieredModelRatio(modelName, tierInputTokens); ok {
 			modelRatio = matchedRule.InputRatio
 			if matchedRule.InputRatio > 0 {
 				completionRatio = matchedRule.OutputRatio / matchedRule.InputRatio
@@ -410,7 +414,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	other := service.GenerateTextOtherInfo(ctx, relayInfo, modelRatio, groupRatio, completionRatio, cacheTokens, cacheRatio, modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
 	if tieredRule != nil {
 		other["tiered_billing"] = true
-		other["tiered_input_tokens"] = promptTokens
+		other["tiered_input_tokens"] = tierInputTokens
 		other["tiered_max_input_tokens"] = tieredRule.MaxInputTokens
 		other["tiered_input_ratio"] = tieredRule.InputRatio
 		other["tiered_output_ratio"] = tieredRule.OutputRatio
